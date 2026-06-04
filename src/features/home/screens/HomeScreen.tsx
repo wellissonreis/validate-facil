@@ -49,6 +49,14 @@ export default function HomeScreen() {
     router.push('/quick-entry');
   }
 
+  function openExpiringProducts() {
+    router.push('/expiring-products');
+  }
+
+  function openLowStock() {
+    router.push('/low-stock');
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <HomeHeader />
@@ -93,7 +101,15 @@ export default function HomeScreen() {
               icon={shortcut.icon}
               key={shortcut.label}
               label={shortcut.label}
-              onPress={shortcut.label === 'Entrada Rápida' ? openQuickEntry : undefined}
+              onPress={
+                shortcut.label === 'Entrada Rápida'
+                  ? openQuickEntry
+                  : shortcut.label === 'Produtos Vencendo'
+                    ? openExpiringProducts
+                    : shortcut.label === 'Estoque Baixo'
+                      ? openLowStock
+                    : undefined
+              }
             />
           ))}
         </View>
