@@ -46,7 +46,6 @@
   "expo": {
     "autolinking": {
       "exclude": [
-        "@expo/ui",
         "@expo/dom-webview"
       ]
     }
