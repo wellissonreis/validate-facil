@@ -4,19 +4,19 @@ import FloatingInput from '../floating-input/FloatingInput';
 import styles from './Style';
 
 export default function Section() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   return (
     <View style={styles.container}>
       <FloatingInput
-        autoComplete="email"
-        icon="email"
-        keyboardType="email-address"
-        label="E-mail"
-        onChangeText={setEmail}
-        textContentType="emailAddress"
-        value={email}
+        autoComplete="username"
+        icon="user"
+        keyboardType="default"
+        label="Usuário"
+        onChangeText={setUsername}
+        textContentType="username"
+        value={username}
       />
       <FloatingInput
         autoComplete="password"

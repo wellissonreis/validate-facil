@@ -2,32 +2,37 @@ import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import {
   Animated,
+  Pressable,
   TextInput,
   TextInputProps,
-  View,
+  View
 } from 'react-native';
 import styles from './Style';
 
 type FloatingInputProps = TextInputProps & {
-  icon: 'email' | 'lock';
+  icon: 'user' | 'lock';
   label: string;
 };
 
 const inputIcons = {
-  email: { ios: 'envelope', android: 'mail', web: 'mail' },
+  user: { ios: 'person', android: 'person', web: 'person' },
   lock: { ios: 'lock', android: 'lock', web: 'lock' },
 } as const;
 
 export default function FloatingInput({
   icon,
   label,
+  secureTextEntry,
   value,
   onChangeText,
   ...props
 }: FloatingInputProps) {
   const [focused, setFocused] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [labelProgress] = useState(() => new Animated.Value(value ? 1 : 0));
   const isRaised = focused || Boolean(value);
+  const hasPasswordToggle = Boolean(secureTextEntry);
+  const isPasswordHidden = hasPasswordToggle && !passwordVisible;
 
   useEffect(() => {
     Animated.timing(labelProgress, {
@@ -74,9 +79,29 @@ export default function FloatingInput({
         }}
         placeholder=""
         placeholderTextColor="#60646C"
-        style={styles.input}
+        secureTextEntry={isPasswordHidden}
+        style={[styles.input, hasPasswordToggle && styles.inputWithAction]}
         value={value}
       />
+      {hasPasswordToggle && (
+        <Pressable
+          accessibilityLabel={passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => setPasswordVisible((current) => !current)}
+          style={styles.passwordToggle}
+        >
+          <SymbolView
+            name={
+              passwordVisible
+                ? { ios: 'eye', android: 'visibility', web: 'visibility' }
+                : { ios: 'eye.slash', android: 'visibility_off', web: 'visibility_off' }
+            }
+            size={24}
+            tintColor="#60646C"
+          />
+        </Pressable>
+      )}
     </View>
   );
 }

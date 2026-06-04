@@ -42,6 +42,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingTop: 24,
   },
+  inputWithAction: {
+    paddingRight: Spacing.four,
+  },
+  passwordToggle: {
+    alignItems: 'center',
+    height: 44,
+    justifyContent: 'center',
+    marginLeft: Spacing.two,
+    width: 44,
+  },
 });
 
 export default styles;
