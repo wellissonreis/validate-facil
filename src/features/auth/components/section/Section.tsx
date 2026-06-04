@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import FloatingInput from '../floating-input/FloatingInput';
 import styles from './Style';
@@ -28,6 +29,7 @@ function GoogleLogo() {
 }
 
 export default function Section() {
+  const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -56,6 +58,7 @@ export default function Section() {
       </Pressable>
 
       <Pressable
+        onPress={() => router.push('/home')}
         style={({ pressed }) => [
           styles.signInButton,
           pressed && styles.signInButtonPressed,
