@@ -6,6 +6,10 @@ type TabItem = {
   label: string;
 };
 
+type BottomTabProps = {
+  activeTab?: string;
+};
+
 const tabs: TabItem[] = [
   { icon: 'home', label: 'Início' },
   { icon: 'cube-outline', label: 'Produtos' },
@@ -16,16 +20,22 @@ const tabs: TabItem[] = [
 
 const primaryGreen = '#05b163';
 
-export default function BottomTab() {
+export default function BottomTab({ activeTab = 'Início' }: BottomTabProps) {
   return (
     <View style={styles.container}>
-      {tabs.map((tab, index) => {
-        const selected = index === 0;
+      {tabs.map((tab) => {
+        const selected = tab.label === activeTab;
         const color = selected ? primaryGreen : '#5f6368';
 
         return (
           <View key={tab.label} style={styles.item}>
-            <Ionicons color={color} name={tab.icon} size={23} />
+            {selected && tab.label === 'Entrada' ? (
+              <View style={styles.selectedAction}>
+                <Ionicons color="#ffffff" name="add" size={26} />
+              </View>
+            ) : (
+              <Ionicons color={color} name={tab.icon} size={23} />
+            )}
             <Text style={[styles.label, selected && styles.selectedLabel]}>{tab.label}</Text>
           </View>
         );
@@ -63,5 +73,18 @@ const styles = StyleSheet.create({
   },
   selectedLabel: {
     color: primaryGreen,
+  },
+  selectedAction: {
+    alignItems: 'center',
+    backgroundColor: primaryGreen,
+    borderRadius: 24,
+    height: 48,
+    justifyContent: 'center',
+    marginTop: -22,
+    shadowColor: primaryGreen,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    width: 48,
   },
 });

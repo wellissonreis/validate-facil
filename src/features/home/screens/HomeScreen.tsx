@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -44,6 +45,10 @@ const shortcuts = [
 ] as const;
 
 export default function HomeScreen() {
+  function openQuickEntry() {
+    router.push('/quick-entry');
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <HomeHeader />
@@ -71,6 +76,7 @@ export default function HomeScreen() {
         </View>
 
         <Pressable
+          onPress={openQuickEntry}
           style={({ pressed }) => [
             styles.primaryButton,
             pressed && styles.primaryButtonPressed,
@@ -87,6 +93,7 @@ export default function HomeScreen() {
               icon={shortcut.icon}
               key={shortcut.label}
               label={shortcut.label}
+              onPress={shortcut.label === 'Entrada Rápida' ? openQuickEntry : undefined}
             />
           ))}
         </View>

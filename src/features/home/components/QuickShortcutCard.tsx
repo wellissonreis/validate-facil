@@ -1,19 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 type QuickShortcutCardProps = {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  onPress?: () => void;
 };
 
-export default function QuickShortcutCard({ icon, label }: QuickShortcutCardProps) {
+export default function QuickShortcutCard({ icon, label, onPress }: QuickShortcutCardProps) {
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
       <Ionicons color="#05b163" name={icon} size={23} />
       <Text numberOfLines={2} style={styles.label}>
         {label}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -35,6 +39,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 10,
     width: '48%',
+  },
+  cardPressed: {
+    backgroundColor: '#f5fbf8',
   },
   label: {
     color: '#30343a',
