@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import FloatingInput from '../floating-input/FloatingInput';
 import styles from './Style';
 
@@ -27,6 +27,9 @@ export default function Section() {
         textContentType="password"
         value={password}
       />
+      <Pressable style={styles.forgotPassword}>
+        <Text style={styles.forgotPasswordText}>Esqueceu sua senha?</Text>
+      </Pressable>
     </View>
   );
 }

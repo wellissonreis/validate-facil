@@ -9,6 +9,16 @@ const styles = StyleSheet.create({
     rowGap: 12,
     width: '100%',
   },
+  forgotPassword: {
+    width: '90%',
+    alignItems: 'flex-end',
+    margin: 5,
+  },
+  forgotPasswordText: {
+    color: '#05b163',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
 
 export default styles;
