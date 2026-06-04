@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Text, View } from 'react-native';
-import styles from './Style';
+import styles from './style';
 
 const softGreen = '#8CE8B6';
 

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomTab from '@/features/home/components/BottomTab';
@@ -8,8 +8,8 @@ import BarcodeInputCard from '../components/BarcodeInputCard';
 import BatchInfoForm from '../components/BatchInfoForm';
 import ProductFoundCard from '../components/ProductFoundCard';
 import QuickEntryHeader from '../components/QuickEntryHeader';
-
-const primaryGreen = '#05b163';
+import QuickEntrySection from '../components/QuickEntrySection';
+import styles from './style';
 
 export default function QuickEntryScreen() {
   function handleSave() {
@@ -21,17 +21,17 @@ export default function QuickEntryScreen() {
       <QuickEntryHeader />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Section title="1. Escanear ou digitar código de barras">
+        <QuickEntrySection title="1. Escanear ou digitar código de barras">
           <BarcodeInputCard />
-        </Section>
+        </QuickEntrySection>
 
-        <Section title="2. Produto encontrado">
+        <QuickEntrySection title="2. Produto encontrado">
           <ProductFoundCard />
-        </Section>
+        </QuickEntrySection>
 
-        <Section title="3. Informações do lote">
+        <QuickEntrySection title="3. Informações do lote">
           <BatchInfoForm />
-        </Section>
+        </QuickEntrySection>
 
         <Pressable
           onPress={handleSave}
@@ -46,62 +46,3 @@ export default function QuickEntryScreen() {
     </SafeAreaView>
   );
 }
-
-type SectionProps = {
-  children: React.ReactNode;
-  title: string;
-};
-
-function Section({ children, title }: SectionProps) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: '#ffffff',
-    flex: 1,
-  },
-  content: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-  },
-  saveButton: {
-    alignItems: 'center',
-    backgroundColor: primaryGreen,
-    borderRadius: 16,
-    columnGap: 8,
-    elevation: 3,
-    flexDirection: 'row',
-    height: 58,
-    justifyContent: 'center',
-    marginTop: 26,
-    shadowColor: primaryGreen,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-  },
-  saveButtonPressed: {
-    backgroundColor: '#19c978',
-  },
-  saveButtonText: {
-    color: '#ffffff',
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    color: '#202124',
-    fontSize: 17,
-    fontWeight: '800',
-    marginBottom: 13,
-  },
-});

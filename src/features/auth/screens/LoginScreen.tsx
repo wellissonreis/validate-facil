@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import LoginFooter from '../components/footer/LoginFooter';
 import LoginHeader from '../components/header/LoginHeader';
 import Section from '../components/section/Section';
-import styles from "./Style";
+import styles from './style';
 
 export default function LoginScreen() {
     return (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomTab from '@/features/home/components/BottomTab';
@@ -8,6 +8,7 @@ import ExpiringProductRow, { ExpiringProduct } from '../components/ExpiringProdu
 import ExpiringProductsHeader from '../components/ExpiringProductsHeader';
 import PeriodFilter, { PeriodOption } from '../components/PeriodFilter';
 import ProductTableHeader from '../components/ProductTableHeader';
+import styles from './style';
 
 const products: ExpiringProduct[] = [
   {
@@ -98,21 +99,7 @@ export default function ExpiringProductsScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      <BottomTab activeTab="Entrada" />
+      <BottomTab activeTab="Produtos" />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  listContent: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 18,
-  },
-  safeArea: {
-    backgroundColor: '#ffffff',
-    flex: 1,
-  },
-  table: {
-    marginHorizontal: 10,
-  },
-});

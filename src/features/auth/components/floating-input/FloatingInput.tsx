@@ -4,15 +4,10 @@ import {
   Animated,
   Pressable,
   TextInput,
-  TextInputProps,
   View
 } from 'react-native';
-import styles from './Style';
-
-type FloatingInputProps = TextInputProps & {
-  icon: 'user' | 'lock';
-  label: string;
-};
+import styles from './style';
+import type { FloatingInputProps } from './types';
 
 const inputIcons = {
   user: { ios: 'person', android: 'person', web: 'person' },

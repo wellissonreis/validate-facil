@@ -1,6 +1,6 @@
 import BrandLogo from '@/shared/components/BrandLogo';
 import { Text, View } from 'react-native';
-import styles from './Style';
+import styles from './style';
 
 export default function LoginHeader() {
   return (
@@ -12,4 +12,3 @@ export default function LoginHeader() {
     </View>
   );
 }
-

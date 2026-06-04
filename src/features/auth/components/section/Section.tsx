@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import FloatingInput from '../floating-input/FloatingInput';
-import styles from './Style';
+import styles from './style';
 
 function GoogleLogo() {
   return (
