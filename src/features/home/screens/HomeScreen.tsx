@@ -5,8 +5,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  getExpiredProductItems,
   getProducts,
-  isExpiredProduct,
   isLowStockProduct,
   isProductExpiringWithinDays,
 } from '@/shared/storage/products';
@@ -79,7 +79,7 @@ export default function HomeScreen() {
           setSummary({
             expiringIn15Days: products.filter((product) => isProductExpiringWithinDays(product, 15)).length,
             expiringIn7Days: products.filter((product) => isProductExpiringWithinDays(product, 7)).length,
-            expired: products.filter(isExpiredProduct).length,
+            expired: getExpiredProductItems(products).length,
             lowStock: products.filter(isLowStockProduct).length,
             total: products.length,
           });

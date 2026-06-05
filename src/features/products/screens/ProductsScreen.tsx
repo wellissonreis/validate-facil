@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ExpiringProductRow, { type ExpiringProduct } from '@/features/expiring-products/components/ExpiringProductRow';
 import ProductTableHeader from '@/features/expiring-products/components/ProductTableHeader';
 import BottomTab from '@/features/home/components/BottomTab';
-import { formatProductDate, getProducts, isExpiredProduct } from '@/shared/storage/products';
+import { formatProductDate, getProductDisplayDate, getProducts, isExpiredProduct } from '@/shared/storage/products';
 import type { Product } from '@/shared/storage/products';
 
 import styles from './style';
@@ -36,7 +36,7 @@ function toRowProduct(product: Product): ExpiringProduct {
     name: product.nome,
     quantity: product.quantidade,
     status: isExpiredProduct(product) ? 'Vencido' : 'Ok',
-    validUntil: formatProductDate(product.validade),
+    validUntil: formatProductDate(getProductDisplayDate(product)),
   };
 }
 

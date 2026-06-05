@@ -6,9 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomTab from '@/features/home/components/BottomTab';
 import {
+  formatDateInput,
   formatProductDate,
+  getProductDisplayDate,
   getProductById,
-  isExpiredProduct,
+  getProductLots,
   parseProductDate,
   updateProduct,
 } from '@/shared/storage/products';
@@ -18,6 +20,7 @@ import styles, { primaryGreen } from './style';
 import type { LotStatus } from './types';
 
 type ProductForm = {
+  barcode: string;
   expirationDate: string;
   lot: string;
   name: string;
@@ -26,11 +29,23 @@ type ProductForm = {
 
 function toProductForm(product: Product): ProductForm {
   return {
-    expirationDate: formatProductDate(product.validade),
+    barcode: product.codigoBarras ?? '',
+    expirationDate: formatProductDate(getProductDisplayDate(product)),
     lot: product.lote ?? '',
     name: product.nome,
     quantity: String(product.quantidade),
   };
+}
+
+function getDateStatus(value: string): LotStatus {
+  const [year, month, day] = value.split('-').map(Number);
+  const expirationDate = new Date(year, month - 1, day);
+  const today = new Date();
+
+  expirationDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return expirationDate < today ? 'Crítico' : 'Ok';
 }
 
 function formatEntryDate(value: string): string {
@@ -127,33 +142,64 @@ function StatusDot({ status }: { status: LotStatus }) {
 }
 
 function ProductLotsCard({ product }: { product: Product }) {
-  const status: LotStatus = isExpiredProduct(product) ? 'Crítico' : 'Ok';
+  const lots = getProductLots(product);
+  const entries =
+    lots.length > 0
+      ? lots
+      : [
+          {
+            id: product.id,
+            codigo: product.lote || 'Sem lote',
+            quantidade: product.quantidade,
+            validade: product.validade,
+          },
+        ];
 
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Lote cadastrado</Text>
+        <Text style={styles.sectionTitle}>Lotes cadastrados</Text>
         <View style={styles.headerMeta}>
-          <Text style={styles.greenText}>{product.lote ? '1 lote' : 'Sem lote'}</Text>
+          <Text style={styles.greenText}>{lots.length > 0 ? `${lots.length} lote(s)` : 'Sem lote'}</Text>
           <Ionicons color="#7a7f85" name="chevron-forward" size={19} />
         </View>
       </View>
       <View style={styles.divider} />
-      <Text style={styles.subTitle}>Data de validade</Text>
+      <Text style={styles.subTitle}>Validade por lote</Text>
 
-      <View style={styles.lotRow}>
-        <Text style={styles.rowDate}>{formatProductDate(product.validade)}</Text>
-        <Text style={styles.rowQuantity}>{product.quantidade} un</Text>
-        <View style={styles.statusCell}>
-          <StatusDot status={status} />
-          <Text style={styles.rowStatus}>{status}</Text>
-        </View>
-      </View>
+      {entries.map((entry) => {
+        const status = getDateStatus(entry.validade);
+
+        return (
+          <View key={entry.id} style={styles.lotRow}>
+            <Text style={styles.rowDate}>{entry.codigo}</Text>
+            <Text style={styles.rowDate}>{formatProductDate(entry.validade)}</Text>
+            <Text style={styles.rowQuantity}>{entry.quantidade} un</Text>
+            <View style={styles.statusCell}>
+              <StatusDot status={status} />
+              <Text style={styles.rowStatus}>{status}</Text>
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 function ProductHistoryCard({ product }: { product: Product }) {
+  const lots = getProductLots(product);
+  const entries =
+    lots.length > 0
+      ? lots
+      : [
+          {
+            id: product.id,
+            codigo: product.lote || 'Não informado',
+            criadoEm: product.criadoEm,
+            quantidade: product.quantidade,
+          },
+        ];
+
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
@@ -162,11 +208,13 @@ function ProductHistoryCard({ product }: { product: Product }) {
       </View>
       <View style={styles.divider} />
 
-      <View style={styles.historyRow}>
-        <Text style={styles.rowDate}>{formatEntryDate(product.criadoEm)}</Text>
-        <Text style={styles.rowQuantity}>{product.quantidade} un</Text>
-        <Text style={styles.lotText}>Lote: {product.lote || 'Não informado'}</Text>
-      </View>
+      {entries.map((entry) => (
+        <View key={entry.id} style={styles.historyRow}>
+          <Text style={styles.rowDate}>{formatEntryDate(entry.criadoEm)}</Text>
+          <Text style={styles.rowQuantity}>{entry.quantidade} un</Text>
+          <Text style={styles.lotText}>Lote: {entry.codigo}</Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -183,6 +231,18 @@ function EditProductForm({
   return (
     <View style={styles.sectionCard}>
       <Text style={styles.sectionTitle}>Editar produto</Text>
+
+      <View style={styles.editField}>
+        <Text style={styles.cardLabel}>Código de barras</Text>
+        <TextInput
+          keyboardType="number-pad"
+          onChangeText={(barcode) => onChangeForm({ ...form, barcode })}
+          placeholder="Ex.: 7896058201234"
+          placeholderTextColor="#9aa0a6"
+          style={styles.editInput}
+          value={form.barcode}
+        />
+      </View>
 
       <View style={styles.editField}>
         <Text style={styles.cardLabel}>Nome do produto</Text>
@@ -212,7 +272,8 @@ function EditProductForm({
           <Text style={styles.cardLabel}>Validade</Text>
           <TextInput
             keyboardType="numbers-and-punctuation"
-            onChangeText={(expirationDate) => onChangeForm({ ...form, expirationDate })}
+            maxLength={10}
+            onChangeText={(expirationDate) => onChangeForm({ ...form, expirationDate: formatDateInput(expirationDate) })}
             placeholder="DD/MM/AAAA"
             placeholderTextColor="#9aa0a6"
             style={styles.editInput}
@@ -245,6 +306,7 @@ export default function ProductDetailScreen() {
   const productId = Array.isArray(params.id) ? params.id[0] : params.id;
   const [product, setProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>({
+    barcode: '',
     expirationDate: '',
     lot: '',
     name: '',
@@ -301,15 +363,21 @@ export default function ProductDetailScreen() {
     }
 
     const trimmedName = form.name.trim();
+    const trimmedBarcode = form.barcode.trim();
     const parsedQuantity = Number(form.quantity.replace(',', '.'));
     const parsedExpirationDate = parseProductDate(form.expirationDate);
+
+    if (!trimmedBarcode) {
+      Alert.alert('Código obrigatório', 'Informe o código de barras.');
+      return;
+    }
 
     if (!trimmedName) {
       Alert.alert('Nome obrigatório', 'Informe o nome do produto.');
       return;
     }
 
-    if (!form.quantity.trim() || !Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
+    if (!form.quantity.trim() || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
       Alert.alert('Quantidade inválida', 'Informe uma quantidade numérica válida.');
       return;
     }
@@ -321,6 +389,7 @@ export default function ProductDetailScreen() {
 
     try {
       const updatedProduct = await updateProduct(product.id, {
+        codigoBarras: trimmedBarcode,
         lote: form.lot.trim() || undefined,
         nome: trimmedName,
         quantidade: parsedQuantity,
@@ -357,8 +426,8 @@ export default function ProductDetailScreen() {
         ) : product ? (
           <>
             <ProductSummary product={product} />
-            <InfoCard icon="pricetag-outline" label="Lote" value={product.lote || 'Não informado'} />
-            <InfoCard icon="calendar-outline" label="Validade" value={formatProductDate(product.validade)} />
+            <InfoCard icon="barcode-outline" label="Código de barras" value={product.codigoBarras || 'Não informado'} />
+            <InfoCard icon="calendar-outline" label="Validade" value={formatProductDate(getProductDisplayDate(product))} />
             <StockCard product={product} />
             {isEditing ? (
               <EditProductForm form={form} onChangeForm={setForm} onSave={handleSave} />

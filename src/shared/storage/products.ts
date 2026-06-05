@@ -4,15 +4,27 @@ const PRODUCTS_KEY = '@validade-facil/products';
 
 export type Product = {
   id: string;
+  codigoBarras?: string;
   nome: string;
   quantidade: number;
   validade: string;
   lote?: string;
+  lotes?: ProductLot[];
+  criadoEm: string;
+  atualizadoEm: string;
+};
+
+export type ProductLot = {
+  id: string;
+  codigo: string;
+  quantidade: number;
+  validade: string;
   criadoEm: string;
   atualizadoEm: string;
 };
 
 export type NewProduct = {
+  codigoBarras: string;
   nome: string;
   quantidade: number;
   validade: string;
@@ -20,6 +32,22 @@ export type NewProduct = {
 };
 
 export type UpdateProduct = NewProduct;
+
+export type StockEntry = {
+  quantidade: number;
+  validade: string;
+  lote?: string;
+};
+
+export type ExpiredProductItem = {
+  id: string;
+  productId: string;
+  lotId?: string;
+  name: string;
+  lot?: string;
+  quantity: number;
+  validUntil: string;
+};
 
 export async function getProducts(): Promise<Product[]> {
   const storedProducts = await AsyncStorage.getItem(PRODUCTS_KEY);
@@ -30,7 +58,7 @@ export async function getProducts(): Promise<Product[]> {
 
   try {
     const products = JSON.parse(storedProducts);
-    return Array.isArray(products) ? products : [];
+    return Array.isArray(products) ? products.map(normalizeProduct) : [];
   } catch {
     return [];
   }
@@ -39,9 +67,25 @@ export async function getProducts(): Promise<Product[]> {
 export async function addProduct(product: NewProduct): Promise<Product> {
   const now = new Date().toISOString();
   const products = await getProducts();
+  const trimmedLot = product.lote?.trim();
+  const lotes = trimmedLot
+    ? [
+        {
+          id: createId(),
+          codigo: trimmedLot,
+          quantidade: product.quantidade,
+          validade: product.validade,
+          criadoEm: now,
+          atualizadoEm: now,
+        },
+      ]
+    : [];
   const newProduct: Product = {
     ...product,
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    codigoBarras: product.codigoBarras.trim(),
+    lote: trimmedLot || undefined,
+    lotes,
+    id: createId(),
     criadoEm: now,
     atualizadoEm: now,
   };
@@ -57,6 +101,13 @@ export async function getProductById(id: string): Promise<Product | null> {
   return products.find((product) => product.id === id) ?? null;
 }
 
+export async function getProductByBarcode(codigoBarras: string): Promise<Product | null> {
+  const normalizedBarcode = codigoBarras.trim();
+  const products = await getProducts();
+
+  return products.find((product) => product.codigoBarras === normalizedBarcode) ?? null;
+}
+
 export async function updateProduct(id: string, product: UpdateProduct): Promise<Product | null> {
   const products = await getProducts();
   const productIndex = products.findIndex((storedProduct) => storedProduct.id === id);
@@ -65,10 +116,26 @@ export async function updateProduct(id: string, product: UpdateProduct): Promise
     return null;
   }
 
+  const now = new Date().toISOString();
+  const trimmedLot = product.lote?.trim();
   const updatedProduct: Product = {
     ...products[productIndex],
     ...product,
-    atualizadoEm: new Date().toISOString(),
+    codigoBarras: product.codigoBarras.trim(),
+    lote: trimmedLot || undefined,
+    lotes: trimmedLot
+      ? [
+          {
+            id: products[productIndex].lotes?.[0]?.id ?? createId(),
+            codigo: trimmedLot,
+            quantidade: product.quantidade,
+            validade: product.validade,
+            criadoEm: products[productIndex].lotes?.[0]?.criadoEm ?? now,
+            atualizadoEm: now,
+          },
+        ]
+      : [],
+    atualizadoEm: now,
   };
   const nextProducts = [...products];
 
@@ -76,6 +143,239 @@ export async function updateProduct(id: string, product: UpdateProduct): Promise
   await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
 
   return updatedProduct;
+}
+
+export async function addStockEntry(productId: string, entry: StockEntry): Promise<Product | null> {
+  const products = await getProducts();
+  const productIndex = products.findIndex((storedProduct) => storedProduct.id === productId);
+
+  if (productIndex < 0) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const product = products[productIndex];
+  const lotCode = entry.lote?.trim();
+  const nextLots = [...getProductLots(product)];
+  let nextLot = product.lote;
+
+  if (lotCode) {
+    const lotIndex = nextLots.findIndex((lot) => lot.codigo === lotCode);
+
+    if (lotIndex >= 0) {
+      nextLots[lotIndex] = {
+        ...nextLots[lotIndex],
+        quantidade: nextLots[lotIndex].quantidade + entry.quantidade,
+        validade: entry.validade,
+        atualizadoEm: now,
+      };
+    } else {
+      nextLots.push({
+        id: createId(),
+        codigo: lotCode,
+        quantidade: entry.quantidade,
+        validade: entry.validade,
+        criadoEm: now,
+        atualizadoEm: now,
+      });
+    }
+
+    nextLot = lotCode;
+  }
+
+  const updatedProduct: Product = {
+    ...product,
+    quantidade: product.quantidade + entry.quantidade,
+    validade: lotCode ? product.validade : entry.validade,
+    lote: nextLot,
+    lotes: nextLots,
+    atualizadoEm: now,
+  };
+  const nextProducts = [...products];
+
+  nextProducts[productIndex] = updatedProduct;
+  await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
+
+  return updatedProduct;
+}
+
+export async function removeProduct(id: string): Promise<void> {
+  const products = await getProducts();
+
+  await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(products.filter((product) => product.id !== id)));
+}
+
+export async function removeExpiredItem(productId: string, lotId?: string): Promise<void> {
+  if (!lotId) {
+    const products = await getProducts();
+    const productIndex = products.findIndex((product) => product.id === productId);
+
+    if (productIndex < 0) {
+      return;
+    }
+
+    const product = products[productIndex];
+    const lots = getProductLots(product);
+
+    if (lots.length === 0) {
+      await removeProduct(productId);
+      return;
+    }
+
+    const directQuantity = getDirectProductQuantity(product, lots);
+    const nextProducts = [...products];
+
+    nextProducts[productIndex] = {
+      ...product,
+      quantidade: Math.max(product.quantidade - directQuantity, 0),
+      atualizadoEm: new Date().toISOString(),
+    };
+
+    await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
+    return;
+  }
+
+  const products = await getProducts();
+  const productIndex = products.findIndex((product) => product.id === productId);
+
+  if (productIndex < 0) {
+    return;
+  }
+
+  const product = products[productIndex];
+  const removedLot = getProductLots(product).find((lot) => lot.id === lotId);
+  const nextLots = getProductLots(product).filter((lot) => lot.id !== lotId);
+  const nextQuantity = Math.max(product.quantidade - (removedLot?.quantidade ?? 0), 0);
+  const nextProducts = [...products];
+
+  if (nextLots.length === 0 && nextQuantity <= 0) {
+    nextProducts.splice(productIndex, 1);
+    await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
+    return;
+  }
+
+  nextProducts[productIndex] = {
+    ...product,
+    quantidade: nextQuantity,
+    lote: nextLots.at(-1)?.codigo,
+    lotes: nextLots,
+    atualizadoEm: new Date().toISOString(),
+  };
+
+  await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
+}
+
+export async function updateExpiredItemDate(productId: string, validade: string, lotId?: string): Promise<void> {
+  const products = await getProducts();
+  const productIndex = products.findIndex((product) => product.id === productId);
+
+  if (productIndex < 0) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const product = products[productIndex];
+  const nextProducts = [...products];
+
+  if (lotId) {
+    nextProducts[productIndex] = {
+      ...product,
+      lotes: getProductLots(product).map((lot) =>
+        lot.id === lotId ? { ...lot, validade, atualizadoEm: now } : lot,
+      ),
+      atualizadoEm: now,
+    };
+  } else {
+    nextProducts[productIndex] = {
+      ...product,
+      validade,
+      atualizadoEm: now,
+    };
+  }
+
+  await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
+}
+
+export function getExpiredProductItems(products: Product[]): ExpiredProductItem[] {
+  return products.flatMap((product) =>
+    getProductExpirationItems(product).filter((item) => isDateExpired(item.validUntil)),
+  );
+}
+
+export function getProductExpirationItems(product: Product): ExpiredProductItem[] {
+  const lots = getProductLots(product);
+  const directQuantity = getDirectProductQuantity(product, lots);
+
+  if (lots.length > 0) {
+    const lotItems = lots.map((lot) => ({
+      id: `${product.id}:${lot.id}`,
+      productId: product.id,
+      lotId: lot.id,
+      name: product.nome,
+      lot: lot.codigo,
+      quantity: lot.quantidade,
+      validUntil: lot.validade,
+    }));
+
+    if (directQuantity <= 0) {
+      return lotItems;
+    }
+
+    return [
+      ...lotItems,
+      {
+        id: product.id,
+        productId: product.id,
+        name: product.nome,
+        quantity: directQuantity,
+        validUntil: product.validade,
+      },
+    ];
+  }
+
+  return [
+    {
+      id: product.id,
+      productId: product.id,
+      name: product.nome,
+      lot: product.lote,
+      quantity: product.quantidade,
+      validUntil: product.validade,
+    },
+  ];
+}
+
+export function getProductLots(product: Product): ProductLot[] {
+  if (product.lotes && product.lotes.length > 0) {
+    return product.lotes;
+  }
+
+  if (!product.lote) {
+    return [];
+  }
+
+  return [
+    {
+      id: `${product.id}-legacy-lot`,
+      codigo: product.lote,
+      quantidade: product.quantidade,
+      validade: product.validade,
+      criadoEm: product.criadoEm,
+      atualizadoEm: product.atualizadoEm,
+    },
+  ];
+}
+
+export function getProductDisplayDate(product: Product): string {
+  const dates = getProductExpirationItems(product).map((item) => item.validUntil).sort();
+
+  return dates[0] ?? product.validade;
+}
+
+function getDirectProductQuantity(product: Product, lots: ProductLot[]): number {
+  const lotQuantity = lots.reduce((total, lot) => total + lot.quantidade, 0);
+
+  return Math.max(product.quantidade - lotQuantity, 0);
 }
 
 export function parseProductDate(value: string): string | null {
@@ -100,6 +400,20 @@ export function parseProductDate(value: string): string | null {
   return validDate ? `${year}-${month}-${day}` : null;
 }
 
+export function formatDateInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
 export function formatProductDate(value: string): string {
   const [year, month, day] = value.split('-');
 
@@ -111,28 +425,46 @@ export function formatProductDate(value: string): string {
 }
 
 export function isExpiredProduct(product: Product): boolean {
-  const expirationDate = getProductExpirationDate(product);
-  const today = getToday();
-
-  return expirationDate < today;
+  return getProductExpirationItems(product).some((item) => isDateExpired(item.validUntil));
 }
 
 export function isProductExpiringWithinDays(product: Product, days: number): boolean {
-  const expirationDate = getProductExpirationDate(product);
   const today = getToday();
   const limitDate = getToday();
 
   limitDate.setDate(limitDate.getDate() + days);
 
-  return expirationDate >= today && expirationDate <= limitDate;
+  return getProductExpirationItems(product).some((item) => {
+    const expirationDate = getDateWithoutTime(item.validUntil);
+
+    return expirationDate >= today && expirationDate <= limitDate;
+  });
 }
 
 export function isLowStockProduct(product: Product): boolean {
   return product.quantidade <= 5;
 }
 
-function getProductExpirationDate(product: Product): Date {
-  const [year, month, day] = product.validade.split('-').map(Number);
+function createId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeProduct(product: Product): Product {
+  const lotes = product.lotes?.length ? product.lotes : getProductLots(product);
+
+  return {
+    ...product,
+    codigoBarras: product.codigoBarras ?? '',
+    lotes,
+  };
+}
+
+function isDateExpired(value: string): boolean {
+  return getDateWithoutTime(value) < getToday();
+}
+
+function getDateWithoutTime(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
 
   const expirationDate = new Date(year, month - 1, day);
   expirationDate.setHours(0, 0, 0, 0);

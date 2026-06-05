@@ -5,30 +5,78 @@ import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomTab from '@/features/home/components/BottomTab';
-import { addProduct, parseProductDate } from '@/shared/storage/products';
+import {
+  addProduct,
+  addStockEntry,
+  formatDateInput,
+  formatProductDate,
+  getProductDisplayDate,
+  getProductByBarcode,
+  parseProductDate,
+} from '@/shared/storage/products';
+import type { Product } from '@/shared/storage/products';
 
 import QuickEntryHeader from '../components/QuickEntryHeader';
 import QuickEntrySection from '../components/QuickEntrySection';
 import styles from './style';
 
 export default function QuickEntryScreen() {
+  const [barcode, setBarcode] = useState('');
+  const [foundProduct, setFoundProduct] = useState<Product | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
   const [lot, setLot] = useState('');
 
+  function handleChangeBarcode(value: string) {
+    setBarcode(value);
+    setFoundProduct(null);
+    setHasSearched(false);
+  }
+
+  async function handleSearch() {
+    const trimmedBarcode = barcode.trim();
+
+    if (!trimmedBarcode) {
+      Alert.alert('Código obrigatório', 'Informe ou escaneie o código de barras.');
+      return;
+    }
+
+    try {
+      const product = await getProductByBarcode(trimmedBarcode);
+
+      setFoundProduct(product);
+      setHasSearched(true);
+      setName('');
+    } catch {
+      Alert.alert('Erro ao buscar', 'Não foi possível buscar o produto agora.');
+    }
+  }
+
   async function handleSave() {
+    const trimmedBarcode = barcode.trim();
     const trimmedName = name.trim();
     const parsedQuantity = Number(quantity.replace(',', '.'));
     const parsedExpirationDate = parseProductDate(expirationDate);
 
-    if (!trimmedName) {
+    if (!trimmedBarcode) {
+      Alert.alert('Código obrigatório', 'Informe ou escaneie o código de barras.');
+      return;
+    }
+
+    if (!hasSearched) {
+      Alert.alert('Busque o produto', 'Busque o código de barras antes de salvar.');
+      return;
+    }
+
+    if (!foundProduct && !trimmedName) {
       Alert.alert('Nome obrigatório', 'Informe o nome do produto.');
       return;
     }
 
-    if (!quantity.trim() || !Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
-      Alert.alert('Quantidade inválida', 'Informe uma quantidade numérica válida.');
+    if (!quantity.trim() || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      Alert.alert('Quantidade inválida', 'Informe uma quantidade maior que zero.');
       return;
     }
 
@@ -38,17 +86,26 @@ export default function QuickEntryScreen() {
     }
 
     try {
-      await addProduct({
-        nome: trimmedName,
-        quantidade: parsedQuantity,
-        validade: parsedExpirationDate,
-        lote: lot.trim() || undefined,
-      });
+      if (foundProduct) {
+        await addStockEntry(foundProduct.id, {
+          quantidade: parsedQuantity,
+          validade: parsedExpirationDate,
+          lote: lot.trim() || undefined,
+        });
+      } else {
+        await addProduct({
+          codigoBarras: trimmedBarcode,
+          nome: trimmedName,
+          quantidade: parsedQuantity,
+          validade: parsedExpirationDate,
+          lote: lot.trim() || undefined,
+        });
+      }
 
-      Alert.alert('Produto salvo', 'Produto cadastrado com sucesso.');
+      Alert.alert('Entrada salva', foundProduct ? 'Estoque atualizado com sucesso.' : 'Produto cadastrado com sucesso.');
       router.replace('/products');
     } catch {
-      Alert.alert('Erro ao salvar', 'Não foi possível cadastrar o produto agora.');
+      Alert.alert('Erro ao salvar', 'Não foi possível salvar a entrada agora.');
     }
   }
 
@@ -57,24 +114,69 @@ export default function QuickEntryScreen() {
       <QuickEntryHeader />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <QuickEntrySection title="1. Produto">
+        <QuickEntrySection title="1. Código de barras">
           <View style={styles.field}>
-            <Text style={styles.label}>Nome do produto</Text>
+            <Text style={styles.label}>Código de barras</Text>
             <TextInput
-              onChangeText={setName}
-              placeholder="Ex.: Leite UHT Integral 1L"
+              keyboardType="number-pad"
+              onChangeText={handleChangeBarcode}
+              placeholder="Escaneie ou digite o código"
               placeholderTextColor="#9aa0a6"
               style={styles.input}
-              value={name}
+              value={barcode}
             />
           </View>
+
+          <Pressable
+            onPress={handleSearch}
+            style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
+          >
+            <Ionicons color="#05b163" name="barcode-outline" size={21} />
+            <Text style={styles.searchButtonText}>Buscar código</Text>
+          </Pressable>
         </QuickEntrySection>
 
-        <QuickEntrySection title="2. Estoque e validade">
+        {foundProduct ? (
+          <QuickEntrySection title="2. Produto encontrado">
+            <View style={styles.foundCard}>
+              <View style={styles.foundIcon}>
+                <Ionicons color="#05b163" name="checkmark" size={22} />
+              </View>
+              <View style={styles.foundInfo}>
+                <Text style={styles.foundName}>{foundProduct.nome}</Text>
+                <Text style={styles.foundText}>Estoque atual: {foundProduct.quantidade} un</Text>
+                <Text style={styles.foundText}>Validade: {formatProductDate(getProductDisplayDate(foundProduct))}</Text>
+              </View>
+            </View>
+          </QuickEntrySection>
+        ) : hasSearched ? (
+          <QuickEntrySection title="2. Novo produto">
+            <View style={styles.notFoundCard}>
+              <Ionicons color="#f57c00" name="alert-circle-outline" size={22} />
+              <Text style={styles.notFoundText}>Código não encontrado. Cadastre o produto abaixo.</Text>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Nome do produto</Text>
+              <TextInput
+                onChangeText={setName}
+                placeholder="Ex.: Leite UHT Integral 1L"
+                placeholderTextColor="#9aa0a6"
+                style={styles.input}
+                value={name}
+              />
+            </View>
+          </QuickEntrySection>
+        ) : null}
+
+        <QuickEntrySection title={foundProduct ? '3. Estoque e validade' : '3. Estoque inicial'}>
+          {!hasSearched ? <Text style={styles.helpText}>Busque o código de barras para continuar.</Text> : null}
+
           <View style={styles.row}>
             <View style={styles.field}>
               <Text style={styles.label}>Quantidade</Text>
               <TextInput
+                editable={hasSearched}
                 keyboardType="numeric"
                 onChangeText={setQuantity}
                 placeholder="Ex.: 12"
@@ -87,8 +189,10 @@ export default function QuickEntryScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>Validade</Text>
               <TextInput
+                editable={hasSearched}
                 keyboardType="numbers-and-punctuation"
-                onChangeText={setExpirationDate}
+                maxLength={10}
+                onChangeText={(value) => setExpirationDate(formatDateInput(value))}
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor="#9aa0a6"
                 style={styles.input}
@@ -98,8 +202,9 @@ export default function QuickEntryScreen() {
           </View>
 
           <View style={[styles.field, styles.lotField]}>
-            <Text style={styles.label}>Lote</Text>
+            <Text style={styles.label}>Lote opcional</Text>
             <TextInput
+              editable={hasSearched}
               onChangeText={setLot}
               placeholder="Ex.: 250510-01"
               placeholderTextColor="#9aa0a6"
@@ -114,7 +219,7 @@ export default function QuickEntryScreen() {
           style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
         >
           <Ionicons color="#ffffff" name="save-outline" size={22} />
-          <Text style={styles.saveButtonText}>Salvar produto</Text>
+          <Text style={styles.saveButtonText}>{foundProduct ? 'Salvar entrada' : 'Salvar produto'}</Text>
         </Pressable>
       </ScrollView>
 

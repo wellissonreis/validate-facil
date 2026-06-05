@@ -1,6 +1,28 @@
 import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
+  actionButton: {
+    alignItems: 'center',
+    borderColor: '#d8f0e4',
+    borderRadius: 12,
+    borderWidth: 1,
+    columnGap: 6,
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  actionText: {
+    color: '#05b163',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  actions: {
+    columnGap: 8,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
   dateColumn: {
     flex: 1.02,
     textAlign: 'center',
@@ -21,10 +43,18 @@ const styles = StyleSheet.create({
   },
   productName: {
     color: '#30343a',
-    flex: 1,
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 16,
+  },
+  productSubtitle: {
+    color: '#6f747b',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  productText: {
+    flex: 1,
   },
   quantityColumn: {
     flex: 0.58,
@@ -42,6 +72,17 @@ const styles = StyleSheet.create({
   },
   rowPressed: {
     backgroundColor: '#f5fbf8',
+  },
+  rowWrapper: {
+    backgroundColor: '#ffffff',
+    borderBottomColor: '#edf0f2',
+    borderBottomWidth: 1,
+  },
+  removeButton: {
+    borderColor: '#f3d1cd',
+  },
+  removeText: {
+    color: '#d93025',
   },
   statusColumn: {
     alignItems: 'center',

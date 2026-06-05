@@ -19,6 +19,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
+  foundCard: {
+    alignItems: 'center',
+    backgroundColor: '#f5fbf8',
+    borderColor: '#d8f0e4',
+    borderRadius: 14,
+    borderWidth: 1,
+    columnGap: 12,
+    flexDirection: 'row',
+    padding: 14,
+  },
+  foundIcon: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  foundInfo: {
+    flex: 1,
+  },
+  foundName: {
+    color: '#202124',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  foundText: {
+    color: '#5f6368',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 5,
+  },
+  helpText: {
+    color: '#6f747b',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
   input: {
     color: '#202124',
     fontSize: 16,
@@ -33,6 +71,23 @@ const styles = StyleSheet.create({
   },
   lotField: {
     marginTop: 12,
+  },
+  notFoundCard: {
+    alignItems: 'center',
+    backgroundColor: '#fff8ef',
+    borderColor: '#ffe3bd',
+    borderRadius: 14,
+    borderWidth: 1,
+    columnGap: 9,
+    flexDirection: 'row',
+    marginBottom: 12,
+    padding: 13,
+  },
+  notFoundText: {
+    color: '#5f6368',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
   },
   row: {
     flexDirection: 'row',
@@ -64,6 +119,26 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#ffffff',
     fontSize: 17,
+    fontWeight: '800',
+  },
+  searchButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderColor: '#cfeedd',
+    borderRadius: 14,
+    borderWidth: 1,
+    columnGap: 7,
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  searchButtonPressed: {
+    backgroundColor: '#f5fbf8',
+  },
+  searchButtonText: {
+    color: primaryGreen,
+    fontSize: 14,
     fontWeight: '800',
   },
 });
