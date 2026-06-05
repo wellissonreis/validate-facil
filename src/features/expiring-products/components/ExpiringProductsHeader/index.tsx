@@ -15,7 +15,7 @@ export default function ExpiringProductsHeader() {
         <Ionicons color="#202124" name="chevron-back" size={26} />
       </Pressable>
 
-      <Text style={styles.title}>Produtos Vencendo</Text>
+      <Text style={styles.title}>Produtos Vencidos</Text>
 
       <Pressable accessibilityLabel="Filtrar produtos" style={styles.iconButton}>
         <Ionicons color="#202124" name="filter-outline" size={24} />

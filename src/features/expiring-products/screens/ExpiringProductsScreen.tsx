@@ -1,76 +1,49 @@
-import { useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { FlatList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomTab from '@/features/home/components/BottomTab';
+import { formatProductDate, getProducts, isExpiredProduct } from '@/shared/storage/products';
+import type { Product } from '@/shared/storage/products';
 
-import ExpiringProductRow, { ExpiringProduct } from '../components/ExpiringProductRow';
+import ExpiringProductRow, { type ExpiringProduct } from '../components/ExpiringProductRow';
 import ExpiringProductsHeader from '../components/ExpiringProductsHeader';
-import PeriodFilter, { PeriodOption } from '../components/PeriodFilter';
 import ProductTableHeader from '../components/ProductTableHeader';
 import styles from './style';
 
-const products: ExpiringProduct[] = [
-  {
-    id: '1',
-    name: 'Iogurte Natural 170g',
-    quantity: 6,
+function toExpiredProduct(product: Product): ExpiringProduct {
+  return {
+    id: product.id,
+    name: product.nome,
+    quantity: product.quantidade,
     status: 'Vencido',
-    validUntil: '17/05/2025',
-  },
-  {
-    id: '2',
-    name: 'Queijo Mussarela Fatiado 150g',
-    quantity: 4,
-    status: 'Vencido',
-    validUntil: '18/05/2025',
-  },
-  {
-    id: '3',
-    name: 'Presunto Cozido Fatiado 200g',
-    quantity: 5,
-    status: 'Crítico',
-    validUntil: '19/05/2025',
-  },
-  {
-    id: '4',
-    name: 'Leite UHT Integral 1L',
-    quantity: 8,
-    status: 'Crítico',
-    validUntil: '20/05/2025',
-  },
-  {
-    id: '5',
-    name: 'Pão de Forma Tradicional 500g',
-    quantity: 10,
-    status: 'Atenção',
-    validUntil: '22/05/2025',
-  },
-  {
-    id: '6',
-    name: 'Manteiga com Sal 200g',
-    quantity: 6,
-    status: 'Atenção',
-    validUntil: '24/05/2025',
-  },
-  {
-    id: '7',
-    name: 'Requeijão Cremoso 200g',
-    quantity: 7,
-    status: 'Ok',
-    validUntil: '27/05/2025',
-  },
-  {
-    id: '8',
-    name: 'Suco de Laranja 1L',
-    quantity: 12,
-    status: 'Ok',
-    validUntil: '30/05/2025',
-  },
-];
+    validUntil: formatProductDate(product.validade),
+  };
+}
 
 export default function ExpiringProductsScreen() {
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>(7);
+  const [products, setProducts] = useState<ExpiringProduct[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      async function loadProducts() {
+        const storedProducts = await getProducts();
+
+        if (isActive) {
+          setProducts(storedProducts.filter(isExpiredProduct).map(toExpiredProduct));
+        }
+      }
+
+      loadProducts();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -80,16 +53,18 @@ export default function ExpiringProductsScreen() {
         contentContainerStyle={styles.listContent}
         data={products}
         keyExtractor={(item) => item.id}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Nenhum produto vencido</Text>
+            <Text style={styles.emptyText}>Produtos vencidos cadastrados aparecerão aqui.</Text>
+          </View>
+        }
         ListHeaderComponent={
-          <>
-            <PeriodFilter
-              onSelectPeriod={setSelectedPeriod}
-              selectedPeriod={selectedPeriod}
-            />
+          products.length > 0 ? (
             <View style={styles.table}>
               <ProductTableHeader />
             </View>
-          </>
+          ) : null
         }
         renderItem={({ item }) => (
           <View style={styles.table}>

@@ -7,7 +7,7 @@ import type { BottomTabProps, TabItem } from './types';
 
 const tabs: TabItem[] = [
   { href: '/home', icon: 'home', label: 'Início' },
-  { href: '/expiring-products', icon: 'cube-outline', label: 'Produtos' },
+  { href: '/products', icon: 'cube-outline', label: 'Produtos' },
   { href: '/quick-entry', icon: 'add-circle-outline', label: 'Entrada' },
   { href: '/reports', icon: 'bar-chart-outline', label: 'Relatórios' },
   { href: '/more', icon: 'ellipsis-horizontal', label: 'Mais' },

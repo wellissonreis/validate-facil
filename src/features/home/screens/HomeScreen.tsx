@@ -1,7 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import {
+  getProducts,
+  isExpiredProduct,
+  isLowStockProduct,
+  isProductExpiringWithinDays,
+} from '@/shared/storage/products';
 
 import BottomTab from '../components/BottomTab';
 import HomeHeader from '../components/HomeHeader';
@@ -9,30 +17,44 @@ import QuickShortcutCard from '../components/QuickShortcutCard';
 import SummaryCard from '../components/SummaryCard';
 import styles from './style';
 
+const initialSummary = {
+  expiringIn15Days: 0,
+  expiringIn7Days: 0,
+  expired: 0,
+  lowStock: 0,
+  total: 0,
+};
+
 const summaryCards = [
+  {
+    color: '#05b163',
+    icon: 'cube-outline',
+    key: 'total',
+    title: 'Produtos cadastrados',
+  },
   {
     color: '#e53935',
     icon: 'alert-circle-outline',
+    key: 'expired',
     title: 'Produtos vencidos',
-    value: 42,
   },
   {
     color: '#f57c00',
     icon: 'time-outline',
+    key: 'expiringIn7Days',
     title: 'Vencem em 7 dias',
-    value: 28,
   },
   {
     color: '#f4b400',
     icon: 'calendar-outline',
+    key: 'expiringIn15Days',
     title: 'Vencem em 15 dias',
-    value: 46,
   },
   {
     color: '#1e88e5',
     icon: 'trending-down-outline',
+    key: 'lowStock',
     title: 'Estoque baixo',
-    value: 19,
   },
 ] as const;
 
@@ -44,6 +66,34 @@ const shortcuts = [
 ] as const;
 
 export default function HomeScreen() {
+  const [summary, setSummary] = useState(initialSummary);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      async function loadSummary() {
+        const products = await getProducts();
+
+        if (isActive) {
+          setSummary({
+            expiringIn15Days: products.filter((product) => isProductExpiringWithinDays(product, 15)).length,
+            expiringIn7Days: products.filter((product) => isProductExpiringWithinDays(product, 7)).length,
+            expired: products.filter(isExpiredProduct).length,
+            lowStock: products.filter(isLowStockProduct).length,
+            total: products.length,
+          });
+        }
+      }
+
+      loadSummary();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
+
   function openQuickEntry() {
     router.push('/quick-entry');
   }
@@ -78,7 +128,7 @@ export default function HomeScreen() {
               key={card.title}
               onPress={openExpiringProducts}
               title={card.title}
-              value={card.value}
+              value={summary[card.key]}
             />
           ))}
         </View>

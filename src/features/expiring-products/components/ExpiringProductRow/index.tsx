@@ -11,7 +11,7 @@ export type { ExpiringProduct } from './types';
 export default function ExpiringProductRow({ product }: ExpiringProductRowProps) {
   return (
     <Pressable
-      onPress={() => router.push('/product-detail')}
+      onPress={() => router.push(`/product-detail?id=${encodeURIComponent(product.id)}`)}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
       <View style={styles.productColumn}>
