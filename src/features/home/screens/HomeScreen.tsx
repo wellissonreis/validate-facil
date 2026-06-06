@@ -6,9 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   getExpiredProductItems,
+  getExpiringInDaysProductItems,
   getProducts,
   isLowStockProduct,
-  isProductExpiringWithinDays,
 } from '@/shared/storage/products';
 
 import BottomTab from '../components/BottomTab';
@@ -28,30 +28,35 @@ const initialSummary = {
 const summaryCards = [
   {
     color: '#05b163',
+    href: '/products',
     icon: 'cube-outline',
     key: 'total',
     title: 'Produtos cadastrados',
   },
   {
     color: '#e53935',
+    href: '/expiring-products?filter=expired',
     icon: 'alert-circle-outline',
     key: 'expired',
     title: 'Produtos vencidos',
   },
   {
     color: '#f57c00',
+    href: '/expiring-products?filter=7days',
     icon: 'time-outline',
     key: 'expiringIn7Days',
     title: 'Vencem em 7 dias',
   },
   {
     color: '#f4b400',
+    href: '/expiring-products?filter=15days',
     icon: 'calendar-outline',
     key: 'expiringIn15Days',
     title: 'Vencem em 15 dias',
   },
   {
     color: '#1e88e5',
+    href: '/low-stock',
     icon: 'trending-down-outline',
     key: 'lowStock',
     title: 'Estoque baixo',
@@ -77,8 +82,8 @@ export default function HomeScreen() {
 
         if (isActive) {
           setSummary({
-            expiringIn15Days: products.filter((product) => isProductExpiringWithinDays(product, 15)).length,
-            expiringIn7Days: products.filter((product) => isProductExpiringWithinDays(product, 7)).length,
+            expiringIn15Days: getExpiringInDaysProductItems(products, 15).length,
+            expiringIn7Days: getExpiringInDaysProductItems(products, 7).length,
             expired: getExpiredProductItems(products).length,
             lowStock: products.filter(isLowStockProduct).length,
             total: products.length,
@@ -99,7 +104,7 @@ export default function HomeScreen() {
   }
 
   function openExpiringProducts() {
-    router.push('/expiring-products');
+    router.push('/expiring-products?filter=7days');
   }
 
   function openLowStock() {
@@ -126,7 +131,7 @@ export default function HomeScreen() {
               color={card.color}
               icon={card.icon}
               key={card.title}
-              onPress={openExpiringProducts}
+              onPress={() => router.push(card.href)}
               title={card.title}
               value={summary[card.key]}
             />

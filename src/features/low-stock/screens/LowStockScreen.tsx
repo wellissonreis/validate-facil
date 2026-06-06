@@ -1,13 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomTab from '@/features/home/components/BottomTab';
+import { getProducts, isLowStockProduct, LOW_STOCK_MINIMUM } from '@/shared/storage/products';
+import type { Product } from '@/shared/storage/products';
 
 import styles, { primaryGreen } from './style';
-import { lowStockProducts } from './types';
 import type { LowStockProduct } from './types';
+
+function toLowStockProduct(product: Product): LowStockProduct {
+  return {
+    id: product.id,
+    minimum: LOW_STOCK_MINIMUM,
+    name: product.nome,
+    quantity: product.quantidade,
+    status: product.quantidade === 0 ? 'Crítico' : product.quantidade <= 2 ? 'Atenção' : 'Baixo',
+  };
+}
 
 function LowStockHeader() {
   return (
@@ -39,7 +51,7 @@ function LowStockRow({ product }: { product: LowStockProduct }) {
 
   return (
     <Pressable
-      onPress={() => router.push('/product-detail')}
+      onPress={() => router.push(`/product-detail?id=${encodeURIComponent(product.id)}`)}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
       <View style={styles.productColumn}>
@@ -60,20 +72,48 @@ function LowStockRow({ product }: { product: LowStockProduct }) {
 }
 
 export default function LowStockScreen() {
+  const [products, setProducts] = useState<LowStockProduct[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      async function loadProducts() {
+        const storedProducts = await getProducts();
+
+        if (isActive) {
+          setProducts(storedProducts.filter(isLowStockProduct).map(toLowStockProduct));
+        }
+      }
+
+      loadProducts();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <LowStockHeader />
 
       <FlatList
         contentContainerStyle={styles.listContent}
-        data={lowStockProducts}
+        data={products}
         keyExtractor={(item) => item.id}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Nenhum produto com estoque baixo</Text>
+            <Text style={styles.emptyText}>Produtos com estoque baixo aparecerão aqui.</Text>
+          </View>
+        }
         ListHeaderComponent={
           <>
             <View style={styles.summaryCard}>
               <Ionicons color="#1e88e5" name="trending-down-outline" size={28} />
               <View style={styles.summaryText}>
-                <Text style={styles.summaryTitle}>19 itens com estoque baixo</Text>
+                <Text style={styles.summaryTitle}>{products.length} itens com estoque baixo</Text>
                 <Text style={styles.summarySubtitle}>Produtos abaixo do estoque mínimo cadastrado</Text>
               </View>
             </View>

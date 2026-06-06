@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import type { BarcodeScanningResult } from 'expo-camera';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,13 +16,30 @@ import {
   getProductByBarcode,
   parseProductDate,
 } from '@/shared/storage/products';
-import type { Product } from '@/shared/storage/products';
+import type { Product, StockEntry } from '@/shared/storage/products';
 
 import QuickEntryHeader from '../components/QuickEntryHeader';
 import QuickEntrySection from '../components/QuickEntrySection';
 import styles from './style';
 
+async function searchLocalProduct(barcode: string): Promise<Product | null> {
+  return getProductByBarcode(barcode);
+}
+
+async function registerProductWithInitialStock(barcode: string, name: string, entry: StockEntry): Promise<void> {
+  await addProduct({
+    codigoBarras: barcode,
+    nome: name,
+    ...entry,
+  });
+}
+
+async function addEntryToExistingProduct(productId: string, entry: StockEntry): Promise<void> {
+  await addStockEntry(productId, entry);
+}
+
 export default function QuickEntryScreen() {
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [barcode, setBarcode] = useState('');
   const [foundProduct, setFoundProduct] = useState<Product | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -28,11 +47,25 @@ export default function QuickEntryScreen() {
   const [quantity, setQuantity] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
   const [lot, setLot] = useState('');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const scanLockedRef = useRef(false);
 
   function handleChangeBarcode(value: string) {
     setBarcode(value);
     setFoundProduct(null);
     setHasSearched(false);
+  }
+
+  async function findProduct(trimmedBarcode: string) {
+    try {
+      const product = await searchLocalProduct(trimmedBarcode);
+
+      setFoundProduct(product);
+      setHasSearched(true);
+      setName('');
+    } catch {
+      Alert.alert('Erro ao buscar', 'Não foi possível buscar o produto agora.');
+    }
   }
 
   async function handleSearch() {
@@ -43,15 +76,46 @@ export default function QuickEntryScreen() {
       return;
     }
 
-    try {
-      const product = await getProductByBarcode(trimmedBarcode);
+    await findProduct(trimmedBarcode);
+  }
 
-      setFoundProduct(product);
-      setHasSearched(true);
-      setName('');
-    } catch {
-      Alert.alert('Erro ao buscar', 'Não foi possível buscar o produto agora.');
+  async function handleToggleScanner() {
+    if (isScannerOpen) {
+      setIsScannerOpen(false);
+      scanLockedRef.current = false;
+      return;
     }
+
+    const permission = cameraPermission?.granted ? cameraPermission : await requestCameraPermission();
+
+    if (!permission.granted) {
+      Alert.alert(
+        'Câmera não autorizada',
+        permission.canAskAgain
+          ? 'A permissão da câmera é necessária para escanear o código de barras.'
+          : 'Ative a permissão da câmera nas configurações do aparelho para usar o scanner.',
+      );
+      return;
+    }
+
+    scanLockedRef.current = false;
+    setIsScannerOpen(true);
+  }
+
+  async function handleBarcodeScanned({ data }: BarcodeScanningResult) {
+    const scannedBarcode = data.trim();
+
+    if (scanLockedRef.current || !scannedBarcode) {
+      return;
+    }
+
+    scanLockedRef.current = true;
+    setIsScannerOpen(false);
+    setBarcode(scannedBarcode);
+    setFoundProduct(null);
+    setHasSearched(false);
+
+    await findProduct(scannedBarcode);
   }
 
   async function handleSave() {
@@ -86,20 +150,16 @@ export default function QuickEntryScreen() {
     }
 
     try {
+      const stockEntry: StockEntry = {
+        quantidade: parsedQuantity,
+        validade: parsedExpirationDate,
+        lote: lot.trim() || undefined,
+      };
+
       if (foundProduct) {
-        await addStockEntry(foundProduct.id, {
-          quantidade: parsedQuantity,
-          validade: parsedExpirationDate,
-          lote: lot.trim() || undefined,
-        });
+        await addEntryToExistingProduct(foundProduct.id, stockEntry);
       } else {
-        await addProduct({
-          codigoBarras: trimmedBarcode,
-          nome: trimmedName,
-          quantidade: parsedQuantity,
-          validade: parsedExpirationDate,
-          lote: lot.trim() || undefined,
-        });
+        await registerProductWithInitialStock(trimmedBarcode, trimmedName, stockEntry);
       }
 
       Alert.alert('Entrada salva', foundProduct ? 'Estoque atualizado com sucesso.' : 'Produto cadastrado com sucesso.');
@@ -134,6 +194,21 @@ export default function QuickEntryScreen() {
             <Ionicons color="#05b163" name="barcode-outline" size={21} />
             <Text style={styles.searchButtonText}>Buscar código</Text>
           </Pressable>
+
+          <Pressable
+            onPress={handleToggleScanner}
+            style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
+          >
+            <Ionicons color="#05b163" name={isScannerOpen ? 'close-outline' : 'camera-outline'} size={21} />
+            <Text style={styles.searchButtonText}>{isScannerOpen ? 'Fechar scanner' : 'Abrir scanner'}</Text>
+          </Pressable>
+
+          {isScannerOpen ? (
+            <View style={styles.scannerContainer}>
+              <CameraView facing="back" onBarcodeScanned={handleBarcodeScanned} style={styles.scanner} />
+              <Text style={styles.scannerHelp}>Aponte a câmera para o código de barras.</Text>
+            </View>
+          ) : null}
         </QuickEntrySection>
 
         {foundProduct ? (

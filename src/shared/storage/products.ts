@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PRODUCTS_KEY = '@validade-facil/products';
 
+export const LOW_STOCK_MINIMUM = 5;
+
 export type Product = {
   id: string;
   codigoBarras?: string;
@@ -31,7 +33,8 @@ export type NewProduct = {
   lote?: string;
 };
 
-export type UpdateProduct = NewProduct;
+export type UpdateProduct = Pick<NewProduct, 'codigoBarras' | 'nome'> &
+  Partial<Pick<NewProduct, 'quantidade' | 'validade' | 'lote'>>;
 
 export type StockEntry = {
   quantidade: number;
@@ -117,20 +120,34 @@ export async function updateProduct(id: string, product: UpdateProduct): Promise
   }
 
   const now = new Date().toISOString();
+  const storedProduct = products[productIndex];
+  const storedLots = getProductLots(storedProduct);
+  const hasLots = storedLots.length > 0;
   const trimmedLot = product.lote?.trim();
+  const nextQuantity = hasLots ? storedProduct.quantidade : (product.quantidade ?? storedProduct.quantidade);
+  const nextValidity = product.validade ?? storedProduct.validade;
+  const nextLot = hasLots
+    ? storedProduct.lote
+    : 'lote' in product
+      ? trimmedLot || undefined
+      : storedProduct.lote;
   const updatedProduct: Product = {
-    ...products[productIndex],
+    ...storedProduct,
     ...product,
     codigoBarras: product.codigoBarras.trim(),
-    lote: trimmedLot || undefined,
-    lotes: trimmedLot
+    quantidade: nextQuantity,
+    validade: nextValidity,
+    lote: nextLot,
+    lotes: hasLots
+      ? storedLots
+      : nextLot
       ? [
           {
-            id: products[productIndex].lotes?.[0]?.id ?? createId(),
-            codigo: trimmedLot,
-            quantidade: product.quantidade,
-            validade: product.validade,
-            criadoEm: products[productIndex].lotes?.[0]?.criadoEm ?? now,
+            id: createId(),
+            codigo: nextLot,
+            quantidade: nextQuantity,
+            validade: nextValidity,
+            criadoEm: now,
             atualizadoEm: now,
           },
         ]
@@ -302,6 +319,21 @@ export function getExpiredProductItems(products: Product[]): ExpiredProductItem[
   );
 }
 
+export function getExpiringInDaysProductItems(products: Product[], days: number): ExpiredProductItem[] {
+  const today = getToday();
+  const limitDate = getToday();
+
+  limitDate.setDate(limitDate.getDate() + days);
+
+  return products.flatMap((product) =>
+    getProductExpirationItems(product).filter((item) => {
+      const expirationDate = getDateWithoutTime(item.validUntil);
+
+      return expirationDate !== null && expirationDate >= today && expirationDate <= limitDate;
+    }),
+  );
+}
+
 export function getProductExpirationItems(product: Product): ExpiredProductItem[] {
   const lots = getProductLots(product);
   const directQuantity = getDirectProductQuantity(product, lots);
@@ -429,20 +461,11 @@ export function isExpiredProduct(product: Product): boolean {
 }
 
 export function isProductExpiringWithinDays(product: Product, days: number): boolean {
-  const today = getToday();
-  const limitDate = getToday();
-
-  limitDate.setDate(limitDate.getDate() + days);
-
-  return getProductExpirationItems(product).some((item) => {
-    const expirationDate = getDateWithoutTime(item.validUntil);
-
-    return expirationDate >= today && expirationDate <= limitDate;
-  });
+  return getExpiringInDaysProductItems([product], days).length > 0;
 }
 
 export function isLowStockProduct(product: Product): boolean {
-  return product.quantidade <= 5;
+  return product.quantidade <= LOW_STOCK_MINIMUM;
 }
 
 function createId(): string {
@@ -459,14 +482,34 @@ function normalizeProduct(product: Product): Product {
   };
 }
 
-function isDateExpired(value: string): boolean {
-  return getDateWithoutTime(value) < getToday();
+function isDateExpired(value: string | null | undefined): boolean {
+  const expirationDate = getDateWithoutTime(value);
+
+  return expirationDate !== null && expirationDate < getToday();
 }
 
-function getDateWithoutTime(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
+function getDateWithoutTime(value: string | null | undefined): Date | null {
+  if (!value) {
+    return null;
+  }
 
-  const expirationDate = new Date(year, month - 1, day);
+  const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (!isoDate) {
+    return null;
+  }
+
+  const [, year, month, day] = isoDate;
+  const expirationDate = new Date(Number(year), Number(month) - 1, Number(day));
+  const isValidDate =
+    expirationDate.getFullYear() === Number(year) &&
+    expirationDate.getMonth() === Number(month) - 1 &&
+    expirationDate.getDate() === Number(day);
+
+  if (!isValidDate) {
+    return null;
+  }
+
   expirationDate.setHours(0, 0, 0, 0);
 
   return expirationDate;

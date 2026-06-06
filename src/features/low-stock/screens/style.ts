@@ -16,6 +16,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 36,
+  },
+  emptyText: {
+    color: '#6f747b',
+    fontSize: 13,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  emptyTitle: {
+    color: '#202124',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   header: {
     alignItems: 'center',
     backgroundColor: '#ffffff',

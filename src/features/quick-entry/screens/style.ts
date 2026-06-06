@@ -121,6 +121,23 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
   },
+  scanner: {
+    height: 240,
+  },
+  scannerContainer: {
+    borderRadius: 14,
+    marginTop: 12,
+    overflow: 'hidden',
+  },
+  scannerHelp: {
+    backgroundColor: '#202124',
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    textAlign: 'center',
+  },
   searchButton: {
     alignItems: 'center',
     alignSelf: 'flex-start',

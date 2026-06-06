@@ -65,6 +65,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     flex: 1,
   },
+  searchInput: {
+    backgroundColor: '#f5f6f7',
+    borderRadius: 12,
+    color: '#202124',
+    fontSize: 15,
+    height: 46,
+    marginHorizontal: 14,
+    marginVertical: 12,
+    paddingHorizontal: 14,
+  },
   table: {
     marginHorizontal: 10,
   },

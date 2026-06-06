@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +8,7 @@ import {
   formatDateInput,
   formatProductDate,
   getExpiredProductItems,
+  getExpiringInDaysProductItems,
   getProducts,
   parseProductDate,
   removeExpiredItem,
@@ -20,20 +21,61 @@ import ExpiringProductsHeader from '../components/ExpiringProductsHeader';
 import ProductTableHeader from '../components/ProductTableHeader';
 import styles from './style';
 
-function toExpiredProduct(item: ExpiredProductItem): ExpiringProduct {
+type ExpirationFilter = 'expired' | '7days' | '15days';
+
+const filterConfig = {
+  expired: {
+    emptyText: 'Produtos ou lotes vencidos cadastrados aparecerão aqui.',
+    emptyTitle: 'Nenhum produto vencido',
+    status: 'Vencido',
+    title: 'Produtos Vencidos',
+  },
+  '7days': {
+    emptyText: 'Produtos ou lotes que vencem em até 7 dias aparecerão aqui.',
+    emptyTitle: 'Nenhum produto vencendo em 7 dias',
+    status: 'Crítico',
+    title: 'Vencem em 7 dias',
+  },
+  '15days': {
+    emptyText: 'Produtos ou lotes que vencem em até 15 dias aparecerão aqui.',
+    emptyTitle: 'Nenhum produto vencendo em 15 dias',
+    status: 'Atenção',
+    title: 'Vencem em 15 dias',
+  },
+} as const;
+
+function getExpirationItems(products: Awaited<ReturnType<typeof getProducts>>, filter: ExpirationFilter) {
+  if (filter === '7days') {
+    return getExpiringInDaysProductItems(products, 7);
+  }
+
+  if (filter === '15days') {
+    return getExpiringInDaysProductItems(products, 15);
+  }
+
+  return getExpiredProductItems(products);
+}
+
+function toExpiredProduct(item: ExpiredProductItem, filter: ExpirationFilter): ExpiringProduct {
   return {
     id: item.id,
     lotId: item.lotId,
     name: item.name,
     productId: item.productId,
     quantity: item.quantity,
-    status: 'Vencido',
+    status: filterConfig[filter].status,
     subtitle: item.lot ? `Lote: ${item.lot}` : 'Sem lote',
     validUntil: formatProductDate(item.validUntil),
   };
 }
 
 export default function ExpiringProductsScreen() {
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const filter: ExpirationFilter =
+    params.filter === '7days' || params.filter === '15days' || params.filter === 'expired'
+      ? params.filter
+      : 'expired';
+  const config = filterConfig[filter];
   const [editingProduct, setEditingProduct] = useState<ExpiringProduct | null>(null);
   const [newExpirationDate, setNewExpirationDate] = useState('');
   const [products, setProducts] = useState<ExpiringProduct[]>([]);
@@ -41,8 +83,8 @@ export default function ExpiringProductsScreen() {
   const loadProducts = useCallback(async () => {
     const storedProducts = await getProducts();
 
-    setProducts(getExpiredProductItems(storedProducts).map(toExpiredProduct));
-  }, []);
+    setProducts(getExpirationItems(storedProducts, filter).map((item) => toExpiredProduct(item, filter)));
+  }, [filter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,7 +94,7 @@ export default function ExpiringProductsScreen() {
         const storedProducts = await getProducts();
 
         if (isActive) {
-          setProducts(getExpiredProductItems(storedProducts).map(toExpiredProduct));
+          setProducts(getExpirationItems(storedProducts, filter).map((item) => toExpiredProduct(item, filter)));
         }
       }
 
@@ -61,7 +103,7 @@ export default function ExpiringProductsScreen() {
       return () => {
         isActive = false;
       };
-    }, []),
+    }, [filter]),
   );
 
   function handleUpdateDate(product: ExpiringProduct) {
@@ -93,16 +135,16 @@ export default function ExpiringProductsScreen() {
   }
 
   function handleRemove(product: ExpiringProduct) {
-    const target = product.lotId ? 'este lote vencido' : 'este produto vencido';
+    const target = product.lotId ? 'este lote' : 'este produto';
 
-    Alert.alert('Remover vencido', `Deseja remover ${target}?`, [
+    Alert.alert('Remover item', `Deseja remover ${target}?`, [
       { style: 'cancel', text: 'Cancelar' },
       {
         onPress: async () => {
           try {
             await removeExpiredItem(product.productId ?? product.id, product.lotId);
             await loadProducts();
-            Alert.alert('Item removido', 'O item vencido foi removido.');
+            Alert.alert('Item removido', 'O item foi removido.');
           } catch {
             Alert.alert('Erro ao remover', 'Não foi possível remover o item agora.');
           }
@@ -115,7 +157,7 @@ export default function ExpiringProductsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ExpiringProductsHeader />
+      <ExpiringProductsHeader title={config.title} />
 
       {editingProduct ? (
         <View style={styles.updateCard}>
@@ -149,8 +191,8 @@ export default function ExpiringProductsScreen() {
         keyExtractor={(item) => item.id}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Nenhum produto vencido</Text>
-            <Text style={styles.emptyText}>Produtos ou lotes vencidos cadastrados aparecerão aqui.</Text>
+            <Text style={styles.emptyTitle}>{config.emptyTitle}</Text>
+            <Text style={styles.emptyText}>{config.emptyText}</Text>
           </View>
         }
         ListHeaderComponent={

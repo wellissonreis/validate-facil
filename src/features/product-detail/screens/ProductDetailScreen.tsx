@@ -12,6 +12,7 @@ import {
   getProductById,
   getProductLots,
   parseProductDate,
+  removeProduct,
   updateProduct,
 } from '@/shared/storage/products';
 import type { Product } from '@/shared/storage/products';
@@ -30,7 +31,7 @@ type ProductForm = {
 function toProductForm(product: Product): ProductForm {
   return {
     barcode: product.codigoBarras ?? '',
-    expirationDate: formatProductDate(getProductDisplayDate(product)),
+    expirationDate: formatProductDate(product.validade),
     lot: product.lote ?? '',
     name: product.nome,
     quantity: String(product.quantidade),
@@ -221,10 +222,12 @@ function ProductHistoryCard({ product }: { product: Product }) {
 
 function EditProductForm({
   form,
+  hasLots,
   onChangeForm,
   onSave,
 }: {
   form: ProductForm;
+  hasLots: boolean;
   onChangeForm: (form: ProductForm) => void;
   onSave: () => void;
 }) {
@@ -259,6 +262,7 @@ function EditProductForm({
         <View style={[styles.editField, styles.editRowField]}>
           <Text style={styles.cardLabel}>Quantidade</Text>
           <TextInput
+            editable={!hasLots}
             keyboardType="numeric"
             onChangeText={(quantity) => onChangeForm({ ...form, quantity })}
             placeholder="Ex.: 12"
@@ -285,6 +289,7 @@ function EditProductForm({
       <View style={styles.editField}>
         <Text style={styles.cardLabel}>Lote</Text>
         <TextInput
+          editable={!hasLots}
           onChangeText={(lot) => onChangeForm({ ...form, lot })}
           placeholder="Ex.: 250510-01"
           placeholderTextColor="#9aa0a6"
@@ -362,6 +367,7 @@ export default function ProductDetailScreen() {
       return;
     }
 
+    const hasLots = getProductLots(product).length > 0;
     const trimmedName = form.name.trim();
     const trimmedBarcode = form.barcode.trim();
     const parsedQuantity = Number(form.quantity.replace(',', '.'));
@@ -377,7 +383,7 @@ export default function ProductDetailScreen() {
       return;
     }
 
-    if (!form.quantity.trim() || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+    if (!hasLots && (!form.quantity.trim() || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0)) {
       Alert.alert('Quantidade inválida', 'Informe uma quantidade numérica válida.');
       return;
     }
@@ -390,10 +396,14 @@ export default function ProductDetailScreen() {
     try {
       const updatedProduct = await updateProduct(product.id, {
         codigoBarras: trimmedBarcode,
-        lote: form.lot.trim() || undefined,
         nome: trimmedName,
-        quantidade: parsedQuantity,
         validade: parsedExpirationDate,
+        ...(hasLots
+          ? {}
+          : {
+              lote: form.lot.trim() || undefined,
+              quantidade: parsedQuantity,
+            }),
       });
 
       if (!updatedProduct) {
@@ -408,6 +418,28 @@ export default function ProductDetailScreen() {
     } catch {
       Alert.alert('Erro ao salvar', 'Não foi possível atualizar o produto agora.');
     }
+  }
+
+  function handleDelete() {
+    if (!product || isEditing) {
+      return;
+    }
+
+    Alert.alert('Excluir produto', `Tem certeza que deseja excluir "${product.nome}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await removeProduct(product.id);
+            router.replace('/products');
+          } catch {
+            Alert.alert('Erro ao excluir', 'Não foi possível excluir o produto agora.');
+          }
+        },
+      },
+    ]);
   }
 
   return (
@@ -430,11 +462,20 @@ export default function ProductDetailScreen() {
             <InfoCard icon="calendar-outline" label="Validade" value={formatProductDate(getProductDisplayDate(product))} />
             <StockCard product={product} />
             {isEditing ? (
-              <EditProductForm form={form} onChangeForm={setForm} onSave={handleSave} />
+              <EditProductForm
+                form={form}
+                hasLots={getProductLots(product).length > 0}
+                onChangeForm={setForm}
+                onSave={handleSave}
+              />
             ) : (
               <>
                 <ProductLotsCard product={product} />
                 <ProductHistoryCard product={product} />
+                <Pressable accessibilityRole="button" onPress={handleDelete} style={styles.card}>
+                  <Text style={styles.sectionTitle}>Excluir produto</Text>
+                  <Ionicons color="#d93025" name="trash-outline" size={28} />
+                </Pressable>
               </>
             )}
           </>

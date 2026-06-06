@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomTab from '@/features/home/components/BottomTab';
 
-import styles from './utility-screen-style';
+import styles from '@/shared/styles/utilityScreenStyle';
 
 export default function MoreRoute() {
   return (

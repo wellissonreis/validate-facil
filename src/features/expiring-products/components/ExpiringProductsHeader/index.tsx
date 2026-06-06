@@ -4,7 +4,11 @@ import { Pressable, Text, View } from 'react-native';
 
 import styles from './style';
 
-export default function ExpiringProductsHeader() {
+type ExpiringProductsHeaderProps = {
+  title?: string;
+};
+
+export default function ExpiringProductsHeader({ title = 'Produtos Vencidos' }: ExpiringProductsHeaderProps) {
   return (
     <View style={styles.container}>
       <Pressable
@@ -15,7 +19,7 @@ export default function ExpiringProductsHeader() {
         <Ionicons color="#202124" name="chevron-back" size={26} />
       </Pressable>
 
-      <Text style={styles.title}>Produtos Vencidos</Text>
+      <Text style={styles.title}>{title}</Text>
 
       <Pressable accessibilityLabel="Filtrar produtos" style={styles.iconButton}>
         <Ionicons color="#202124" name="filter-outline" size={24} />
