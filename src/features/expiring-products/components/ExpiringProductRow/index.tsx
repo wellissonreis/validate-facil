@@ -1,6 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Image } from 'expo-image';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, Text, View } from 'react-native';
+
+import type { ProductsStackParamList } from '@/navigation/types';
 
 import StatusBadge from '../StatusBadge';
 import styles from './style';
@@ -9,16 +13,22 @@ import type { ExpiringProductRowProps } from './types';
 export type { ExpiringProduct } from './types';
 
 export default function ExpiringProductRow({ onRemove, onUpdateDate, product }: ExpiringProductRowProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
+
   return (
     <View style={styles.rowWrapper}>
       <Pressable
-        onPress={() => router.push(`/product-detail?id=${encodeURIComponent(product.productId ?? product.id)}`)}
+        onPress={() => navigation.navigate('ProductDetail', { id: product.productId ?? product.id })}
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
       >
         <View style={styles.productColumn}>
-          <View style={styles.iconBox}>
-            <Ionicons color="#05b163" name="cube-outline" size={20} />
-          </View>
+          {product.imageUri ? (
+            <Image contentFit="cover" source={{ uri: product.imageUri }} style={styles.thumbnail} />
+          ) : (
+            <View style={styles.iconBox}>
+              <Ionicons color="#05b163" name="cube-outline" size={20} />
+            </View>
+          )}
           <View style={styles.productText}>
             <Text numberOfLines={2} style={styles.productName}>
               {product.name}

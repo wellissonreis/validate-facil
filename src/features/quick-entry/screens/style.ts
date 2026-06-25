@@ -3,6 +3,13 @@ import { StyleSheet } from 'react-native';
 const primaryGreen = '#05b163';
 
 const styles = StyleSheet.create({
+  barcodeActions: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 12,
+  },
   content: {
     backgroundColor: '#ffffff',
     paddingBottom: 24,
@@ -72,6 +79,58 @@ const styles = StyleSheet.create({
   lotField: {
     marginTop: 12,
   },
+  modalBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(20, 24, 28, 0.58)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    maxWidth: 420,
+    padding: 22,
+    width: '100%',
+  },
+  modalField: {
+    backgroundColor: '#ffffff',
+    borderColor: '#dfe4e7',
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  modalIcon: {
+    alignItems: 'center',
+    backgroundColor: '#eef8f3',
+    borderRadius: 24,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  modalPrimaryButton: {
+    alignItems: 'center',
+    backgroundColor: primaryGreen,
+    borderRadius: 14,
+    height: 52,
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  modalText: {
+    color: '#5f6368',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  modalTitle: {
+    color: '#202124',
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 14,
+  },
   notFoundCard: {
     alignItems: 'center',
     backgroundColor: '#fff8ef',
@@ -121,6 +180,23 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
   },
+  scanButton: {
+    alignItems: 'center',
+    backgroundColor: primaryGreen,
+    borderRadius: 14,
+    columnGap: 7,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  scanButtonPressed: {
+    backgroundColor: '#19c978',
+  },
+  scanButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
   scanner: {
     height: 240,
   },
@@ -146,7 +222,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     columnGap: 7,
     flexDirection: 'row',
-    marginTop: 12,
     paddingHorizontal: 14,
     paddingVertical: 11,
   },

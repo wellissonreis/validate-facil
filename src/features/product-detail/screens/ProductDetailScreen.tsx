@@ -1,21 +1,30 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Image } from 'expo-image';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import BottomTab from '@/features/home/components/BottomTab';
+import type { ProductsStackParamList } from '@/navigation/types';
+import { pickAndPersistProductImage } from '@/shared/media/productImages';
 import {
   formatDateInput,
   formatProductDate,
-  getProductDisplayDate,
   getProductById,
+  getProductDisplayDate,
   getProductLots,
+  getStockMovements,
+  isNonPerishableValidity,
+  NON_PERISHABLE_VALIDITY,
   parseProductDate,
   removeProduct,
+  type Product,
+  type StockMovement,
   updateProduct,
+  updateProductImage,
 } from '@/shared/storage/products';
-import type { Product } from '@/shared/storage/products';
 
 import styles, { primaryGreen } from './style';
 import type { LotStatus } from './types';
@@ -31,7 +40,7 @@ type ProductForm = {
 function toProductForm(product: Product): ProductForm {
   return {
     barcode: product.codigoBarras ?? '',
-    expirationDate: formatProductDate(product.validade),
+    expirationDate: isNonPerishableValidity(product.validade) ? '' : formatProductDate(product.validade),
     lot: product.lote ?? '',
     name: product.nome,
     quantity: String(product.quantidade),
@@ -39,6 +48,10 @@ function toProductForm(product: Product): ProductForm {
 }
 
 function getDateStatus(value: string): LotStatus {
+  if (isNonPerishableValidity(value)) {
+    return 'Não perecível';
+  }
+
   const [year, month, day] = value.split('-').map(Number);
   const expirationDate = new Date(year, month - 1, day);
   const today = new Date();
@@ -49,7 +62,7 @@ function getDateStatus(value: string): LotStatus {
   return expirationDate < today ? 'Crítico' : 'Ok';
 }
 
-function formatEntryDate(value: string): string {
+function formatRegistrationDate(value: string): string {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -68,9 +81,11 @@ function ProductDetailHeader({
   onCancelEdit: () => void;
   onStartEdit: () => void;
 }) {
+  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
+
   return (
     <View style={styles.header}>
-      <Pressable accessibilityLabel="Voltar" onPress={() => router.back()} style={styles.headerButton}>
+      <Pressable accessibilityLabel="Voltar" onPress={() => navigation.goBack()} style={styles.headerButton}>
         <Ionicons color="#202124" name="chevron-back" size={27} />
       </Pressable>
       <Text style={styles.headerTitle}>Detalhe do Produto</Text>
@@ -85,15 +100,22 @@ function ProductDetailHeader({
   );
 }
 
-function ProductSummary({ product }: { product: Product }) {
+function ProductSummary({ onChangeImage, product }: { onChangeImage: () => void; product: Product }) {
   return (
     <View style={styles.summary}>
-      <View style={styles.productImageCard}>
-        <MaterialCommunityIcons color={primaryGreen} name="bottle-soda-classic-outline" size={50} />
-      </View>
+      <Pressable onPress={onChangeImage} style={styles.productImageCard}>
+        {product.imageUri ? (
+          <Image contentFit="cover" source={{ uri: product.imageUri }} style={styles.productImage} />
+        ) : (
+          <MaterialCommunityIcons color={primaryGreen} name="bottle-soda-classic-outline" size={50} />
+        )}
+        <View style={styles.imageActionBadge}>
+          <Ionicons color="#ffffff" name="camera-outline" size={14} />
+        </View>
+      </Pressable>
       <View style={styles.summaryText}>
         <Text style={styles.productName}>{product.nome}</Text>
-        <Text style={styles.productBrand}>Entrada: {formatEntryDate(product.criadoEm)}</Text>
+        <Text style={styles.productBrand}>Cadastro: {formatRegistrationDate(product.criadoEm)}</Text>
       </View>
     </View>
   );
@@ -137,7 +159,8 @@ function StockCard({ product }: { product: Product }) {
 }
 
 function StatusDot({ status }: { status: LotStatus }) {
-  const color = status === 'Crítico' ? '#d93025' : status === 'Atenção' ? '#f57c00' : primaryGreen;
+  const color =
+    status === 'Crítico' ? '#d93025' : status === 'Atenção' ? '#f57c00' : status === 'Não perecível' ? '#1e88e5' : primaryGreen;
 
   return <View style={[styles.statusDot, { backgroundColor: color }]} />;
 }
@@ -187,35 +210,42 @@ function ProductLotsCard({ product }: { product: Product }) {
   );
 }
 
-function ProductHistoryCard({ product }: { product: Product }) {
-  const lots = getProductLots(product);
-  const entries =
-    lots.length > 0
-      ? lots
-      : [
-          {
-            id: product.id,
-            codigo: product.lote || 'Não informado',
-            criadoEm: product.criadoEm,
-            quantidade: product.quantidade,
-          },
-        ];
+function formatMovementType(type: StockMovement['type']): string {
+  const labels: Record<StockMovement['type'], string> = {
+    ajuste: 'Ajuste',
+    correcao_manual: 'Correção',
+    entrada: 'Entrada',
+    remocao_vencimento: 'Vencimento',
+    saida: 'Saída',
+  };
 
+  return labels[type];
+}
+
+function ProductHistoryCard({ movements }: { movements: StockMovement[] }) {
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Histórico de entradas</Text>
-        <Text style={styles.greenText}>Atualizado</Text>
+        <Text style={styles.sectionTitle}>Histórico de movimentação</Text>
+        <Text style={styles.greenText}>{movements.length} registro(s)</Text>
       </View>
       <View style={styles.divider} />
 
-      {entries.map((entry) => (
-        <View key={entry.id} style={styles.historyRow}>
-          <Text style={styles.rowDate}>{formatEntryDate(entry.criadoEm)}</Text>
-          <Text style={styles.rowQuantity}>{entry.quantidade} un</Text>
-          <Text style={styles.lotText}>Lote: {entry.codigo}</Text>
+      {movements.slice(0, 8).map((movement) => (
+        <View key={movement.id} style={styles.historyRow}>
+          <Text style={styles.rowDate}>{formatRegistrationDate(movement.createdAt)}</Text>
+          <Text style={styles.rowQuantity}>
+            {movement.quantityDelta > 0 ? '+' : ''}
+            {movement.quantityDelta} un
+          </Text>
+          <Text style={styles.lotText}>
+            {formatMovementType(movement.type)}
+            {movement.lotCode ? ` - ${movement.lotCode}` : ''}
+          </Text>
         </View>
       ))}
+
+      {movements.length === 0 ? <Text style={styles.emptyText}>Nenhuma movimentação registrada.</Text> : null}
     </View>
   );
 }
@@ -273,12 +303,12 @@ function EditProductForm({
         </View>
 
         <View style={[styles.editField, styles.editRowField]}>
-          <Text style={styles.cardLabel}>Validade</Text>
+          <Text style={styles.cardLabel}>Validade (opcional)</Text>
           <TextInput
             keyboardType="numbers-and-punctuation"
             maxLength={10}
             onChangeText={(expirationDate) => onChangeForm({ ...form, expirationDate: formatDateInput(expirationDate) })}
-            placeholder="DD/MM/AAAA"
+            placeholder="Vazio = não perecível"
             placeholderTextColor="#9aa0a6"
             style={styles.editInput}
             value={form.expirationDate}
@@ -307,8 +337,9 @@ function EditProductForm({
 }
 
 export default function ProductDetailScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
-  const productId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const route = useRoute<RouteProp<ProductsStackParamList, 'ProductDetail'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
+  const productId = route.params.id;
   const [product, setProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>({
     barcode: '',
@@ -319,6 +350,7 @@ export default function ProductDetailScreen() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [movements, setMovements] = useState<StockMovement[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -332,9 +364,11 @@ export default function ProductDetailScreen() {
         }
 
         const storedProduct = await getProductById(productId);
+        const productMovements = productId ? await getStockMovements(productId) : [];
 
         if (isActive) {
           setProduct(storedProduct);
+          setMovements(productMovements);
           setIsEditing(false);
           setIsLoading(false);
 
@@ -371,7 +405,9 @@ export default function ProductDetailScreen() {
     const trimmedName = form.name.trim();
     const trimmedBarcode = form.barcode.trim();
     const parsedQuantity = Number(form.quantity.replace(',', '.'));
-    const parsedExpirationDate = parseProductDate(form.expirationDate);
+    const parsedExpirationDate = form.expirationDate.trim()
+      ? parseProductDate(form.expirationDate)
+      : NON_PERISHABLE_VALIDITY;
 
     if (!trimmedBarcode) {
       Alert.alert('Código obrigatório', 'Informe o código de barras.');
@@ -412,11 +448,74 @@ export default function ProductDetailScreen() {
       }
 
       setProduct(updatedProduct);
+      setMovements(await getStockMovements(updatedProduct.id));
       setForm(toProductForm(updatedProduct));
       setIsEditing(false);
       Alert.alert('Produto atualizado', 'As alterações foram salvas com sucesso.');
     } catch {
       Alert.alert('Erro ao salvar', 'Não foi possível atualizar o produto agora.');
+    }
+  }
+
+  function handleChangeImage() {
+    if (!product) {
+      return;
+    }
+
+    Alert.alert('Imagem do produto', 'Escolha a origem da imagem.', [
+      {
+        text: 'Câmera',
+        onPress: () => handlePickImage('camera'),
+      },
+      {
+        text: 'Galeria',
+        onPress: () => handlePickImage('library'),
+      },
+      ...(product.imageUri
+        ? [
+            {
+              text: 'Remover imagem',
+              style: 'destructive' as const,
+              onPress: handleRemoveImage,
+            },
+          ]
+        : []),
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }
+
+  async function handlePickImage(source: 'camera' | 'library') {
+    if (!product) {
+      return;
+    }
+
+    try {
+      const imageUri = await pickAndPersistProductImage(product.id, source);
+
+      if (!imageUri) {
+        return;
+      }
+
+      const updatedProduct = await updateProductImage(product.id, imageUri);
+
+      if (updatedProduct) {
+        setProduct(updatedProduct);
+        setForm(toProductForm(updatedProduct));
+      }
+    } catch {
+      Alert.alert('Erro na imagem', 'Não foi possível salvar a imagem do produto.');
+    }
+  }
+
+  async function handleRemoveImage() {
+    if (!product) {
+      return;
+    }
+
+    const updatedProduct = await updateProductImage(product.id, undefined);
+
+    if (updatedProduct) {
+      setProduct(updatedProduct);
     }
   }
 
@@ -433,7 +532,7 @@ export default function ProductDetailScreen() {
         onPress: async () => {
           try {
             await removeProduct(product.id);
-            router.replace('/products');
+            navigation.popTo('Products');
           } catch {
             Alert.alert('Erro ao excluir', 'Não foi possível excluir o produto agora.');
           }
@@ -457,7 +556,7 @@ export default function ProductDetailScreen() {
           </View>
         ) : product ? (
           <>
-            <ProductSummary product={product} />
+            <ProductSummary onChangeImage={handleChangeImage} product={product} />
             <InfoCard icon="barcode-outline" label="Código de barras" value={product.codigoBarras || 'Não informado'} />
             <InfoCard icon="calendar-outline" label="Validade" value={formatProductDate(getProductDisplayDate(product))} />
             <StockCard product={product} />
@@ -471,7 +570,7 @@ export default function ProductDetailScreen() {
             ) : (
               <>
                 <ProductLotsCard product={product} />
-                <ProductHistoryCard product={product} />
+                <ProductHistoryCard movements={movements} />
                 <Pressable accessibilityRole="button" onPress={handleDelete} style={styles.card}>
                   <Text style={styles.sectionTitle}>Excluir produto</Text>
                   <Ionicons color="#d93025" name="trash-outline" size={28} />
@@ -486,8 +585,6 @@ export default function ProductDetailScreen() {
           </View>
         )}
       </ScrollView>
-
-      <BottomTab activeTab="Produtos" />
     </SafeAreaView>
   );
 }

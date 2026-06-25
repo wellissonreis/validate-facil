@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { Image } from 'expo-image';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import BottomTab from '@/features/home/components/BottomTab';
+import type { ProductsStackParamList } from '@/navigation/types';
 import { getProducts, isLowStockProduct, LOW_STOCK_MINIMUM } from '@/shared/storage/products';
 import type { Product } from '@/shared/storage/products';
 
@@ -14,6 +16,7 @@ import type { LowStockProduct } from './types';
 function toLowStockProduct(product: Product): LowStockProduct {
   return {
     id: product.id,
+    imageUri: product.imageUri,
     minimum: LOW_STOCK_MINIMUM,
     name: product.nome,
     quantity: product.quantidade,
@@ -22,9 +25,11 @@ function toLowStockProduct(product: Product): LowStockProduct {
 }
 
 function LowStockHeader() {
+  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
+
   return (
     <View style={styles.header}>
-      <Pressable accessibilityLabel="Voltar" onPress={() => router.back()} style={styles.iconButton}>
+      <Pressable accessibilityLabel="Voltar" onPress={() => navigation.goBack()} style={styles.iconButton}>
         <Ionicons color="#202124" name="chevron-back" size={26} />
       </Pressable>
       <Text style={styles.title}>Estoque Baixo</Text>
@@ -47,17 +52,22 @@ function LowStockTableHeader() {
 }
 
 function LowStockRow({ product }: { product: LowStockProduct }) {
+  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
   const color = product.status === 'Crítico' ? '#d93025' : product.status === 'Atenção' ? '#f57c00' : '#1e88e5';
 
   return (
     <Pressable
-      onPress={() => router.push(`/product-detail?id=${encodeURIComponent(product.id)}`)}
+      onPress={() => navigation.navigate('ProductDetail', { id: product.id })}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
       <View style={styles.productColumn}>
-        <View style={styles.iconBox}>
-          <Ionicons color={primaryGreen} name="cube-outline" size={20} />
-        </View>
+        {product.imageUri ? (
+          <Image contentFit="cover" source={{ uri: product.imageUri }} style={styles.thumbnail} />
+        ) : (
+          <View style={styles.iconBox}>
+            <Ionicons color={primaryGreen} name="cube-outline" size={20} />
+          </View>
+        )}
         <Text numberOfLines={2} style={styles.productName}>{product.name}</Text>
       </View>
       <Text style={[styles.valueText, styles.quantityColumn]}>{product.quantity}</Text>
@@ -123,8 +133,6 @@ export default function LowStockScreen() {
         renderItem={({ item }) => <LowStockRow product={item} />}
         showsVerticalScrollIndicator={false}
       />
-
-      <BottomTab activeTab="Produtos" />
     </SafeAreaView>
   );
 }

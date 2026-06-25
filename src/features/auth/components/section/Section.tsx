@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Path } from 'react-native-svg';
+import type { RootStackParamList } from '@/navigation/types';
 import FloatingInput from '../floating-input/FloatingInput';
 import styles from './style';
 
@@ -29,7 +31,7 @@ function GoogleLogo() {
 }
 
 export default function Section() {
-  const router = useRouter();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -58,7 +60,7 @@ export default function Section() {
       </Pressable>
 
       <Pressable
-        onPress={() => router.push('/home')}
+        onPress={() => navigation.replace('MainTabs', { screen: 'HomeTab', params: { screen: 'Home' } })}
         style={({ pressed }) => [
           styles.signInButton,
           pressed && styles.signInButtonPressed,

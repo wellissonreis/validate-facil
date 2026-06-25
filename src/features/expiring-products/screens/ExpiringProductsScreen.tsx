@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import BottomTab from '@/features/home/components/BottomTab';
+import type { ExpirationFilter, ProductsStackParamList } from '@/navigation/types';
 import {
   formatDateInput,
   formatProductDate,
@@ -20,8 +21,6 @@ import ExpiringProductRow, { type ExpiringProduct } from '../components/Expiring
 import ExpiringProductsHeader from '../components/ExpiringProductsHeader';
 import ProductTableHeader from '../components/ProductTableHeader';
 import styles from './style';
-
-type ExpirationFilter = 'expired' | '7days' | '15days';
 
 const filterConfig = {
   expired: {
@@ -70,9 +69,10 @@ function toExpiredProduct(item: ExpiredProductItem, filter: ExpirationFilter): E
 }
 
 export default function ExpiringProductsScreen() {
-  const params = useLocalSearchParams<{ filter?: string }>();
+  const route = useRoute<RouteProp<ProductsStackParamList, 'ExpiringProducts'>>();
+  const params = route.params;
   const filter: ExpirationFilter =
-    params.filter === '7days' || params.filter === '15days' || params.filter === 'expired'
+    params?.filter === '7days' || params?.filter === '15days' || params?.filter === 'expired'
       ? params.filter
       : 'expired';
   const config = filterConfig[filter];
@@ -82,8 +82,14 @@ export default function ExpiringProductsScreen() {
 
   const loadProducts = useCallback(async () => {
     const storedProducts = await getProducts();
+    const productsById = new Map(storedProducts.map((product) => [product.id, product]));
 
-    setProducts(getExpirationItems(storedProducts, filter).map((item) => toExpiredProduct(item, filter)));
+    setProducts(
+      getExpirationItems(storedProducts, filter).map((item) => ({
+        ...toExpiredProduct(item, filter),
+        imageUri: productsById.get(item.productId)?.imageUri,
+      })),
+    );
   }, [filter]);
 
   useFocusEffect(
@@ -94,7 +100,14 @@ export default function ExpiringProductsScreen() {
         const storedProducts = await getProducts();
 
         if (isActive) {
-          setProducts(getExpirationItems(storedProducts, filter).map((item) => toExpiredProduct(item, filter)));
+          const productsById = new Map(storedProducts.map((product) => [product.id, product]));
+
+          setProducts(
+            getExpirationItems(storedProducts, filter).map((item) => ({
+              ...toExpiredProduct(item, filter),
+              imageUri: productsById.get(item.productId)?.imageUri,
+            })),
+          );
         }
       }
 
@@ -209,8 +222,6 @@ export default function ExpiringProductsScreen() {
         )}
         showsVerticalScrollIndicator={false}
       />
-
-      <BottomTab activeTab="Produtos" />
     </SafeAreaView>
   );
 }

@@ -126,6 +126,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
   },
+  imageActionBadge: {
+    alignItems: 'center',
+    backgroundColor: primaryGreen,
+    borderRadius: 13,
+    bottom: -5,
+    height: 26,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -5,
+    width: 26,
+  },
   historyRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -167,6 +178,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 10,
     width: 92,
+  },
+  productImage: {
+    borderRadius: 16,
+    height: 88,
+    width: 88,
   },
   productName: {
     color: '#202124',

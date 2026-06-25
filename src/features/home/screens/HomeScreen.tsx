@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import type { RootTabParamList } from '@/navigation/types';
 import {
   getExpiredProductItems,
   getExpiringInDaysProductItems,
@@ -11,7 +13,6 @@ import {
   isLowStockProduct,
 } from '@/shared/storage/products';
 
-import BottomTab from '../components/BottomTab';
 import HomeHeader from '../components/HomeHeader';
 import QuickShortcutCard from '../components/QuickShortcutCard';
 import SummaryCard from '../components/SummaryCard';
@@ -28,35 +29,35 @@ const initialSummary = {
 const summaryCards = [
   {
     color: '#05b163',
-    href: '/products',
+    route: { screen: 'Products' },
     icon: 'cube-outline',
     key: 'total',
     title: 'Produtos cadastrados',
   },
   {
     color: '#e53935',
-    href: '/expiring-products?filter=expired',
+    route: { params: { filter: 'expired' }, screen: 'ExpiringProducts' },
     icon: 'alert-circle-outline',
     key: 'expired',
     title: 'Produtos vencidos',
   },
   {
     color: '#f57c00',
-    href: '/expiring-products?filter=7days',
+    route: { params: { filter: '7days' }, screen: 'ExpiringProducts' },
     icon: 'time-outline',
     key: 'expiringIn7Days',
     title: 'Vencem em 7 dias',
   },
   {
     color: '#f4b400',
-    href: '/expiring-products?filter=15days',
+    route: { params: { filter: '15days' }, screen: 'ExpiringProducts' },
     icon: 'calendar-outline',
     key: 'expiringIn15Days',
     title: 'Vencem em 15 dias',
   },
   {
     color: '#1e88e5',
-    href: '/low-stock',
+    route: { screen: 'LowStock' },
     icon: 'trending-down-outline',
     key: 'lowStock',
     title: 'Estoque baixo',
@@ -64,13 +65,18 @@ const summaryCards = [
 ] as const;
 
 const shortcuts = [
-  { icon: 'add-outline', label: 'Entrada Rápida' },
+  { icon: 'remove-circle-outline', label: 'Saída Rápida' },
+  { icon: 'barcode-outline', label: 'Consultar Produto' },
+  { icon: 'add-outline', label: 'Cadastrar Produto' },
+  { icon: 'layers-outline', label: 'Posição do Estoque' },
+  { icon: 'time-outline', label: 'Histórico' },
+  { icon: 'git-compare-outline', label: 'Entrada x Saída' },
   { icon: 'hourglass-outline', label: 'Produtos Vencendo' },
   { icon: 'layers-outline', label: 'Estoque Baixo' },
-  { icon: 'document-text-outline', label: 'Relatórios' },
 ] as const;
 
 export default function HomeScreen() {
+  const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const [summary, setSummary] = useState(initialSummary);
 
   useFocusEffect(
@@ -100,15 +106,35 @@ export default function HomeScreen() {
   );
 
   function openQuickEntry() {
-    router.push('/quick-entry');
+    navigation.navigate('ProductsTab', { screen: 'QuickEntry' });
+  }
+
+  function openStockOutput() {
+    navigation.navigate('ProductsTab', { screen: 'StockOutput' });
+  }
+
+  function openProductConsultation() {
+    navigation.navigate('ConsultationTab', { screen: 'ProductConsultation' });
   }
 
   function openExpiringProducts() {
-    router.push('/expiring-products?filter=7days');
+    navigation.navigate('ProductsTab', { params: { filter: '7days' }, screen: 'ExpiringProducts' });
   }
 
   function openLowStock() {
-    router.push('/low-stock');
+    navigation.navigate('ProductsTab', { screen: 'LowStock' });
+  }
+
+  function openStockPosition() {
+    navigation.navigate('ProductsTab', { screen: 'StockPosition' });
+  }
+
+  function openMovementHistory() {
+    navigation.navigate('ProductsTab', { screen: 'MovementHistory' });
+  }
+
+  function openStockComparison() {
+    navigation.navigate('ProductsTab', { screen: 'StockComparison' });
   }
 
   return (
@@ -120,7 +146,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.greeting}>
-          <Text style={styles.greetingTitle}>Olá, João!</Text>
+          <Text style={styles.greetingTitle}>Olá, Wellisson!</Text>
           <Text style={styles.greetingSubtitle}>Aqui está o resumo do seu estoque hoje.</Text>
         </View>
 
@@ -131,7 +157,7 @@ export default function HomeScreen() {
               color={card.color}
               icon={card.icon}
               key={card.title}
-              onPress={() => router.push(card.href)}
+              onPress={() => navigation.navigate('ProductsTab', card.route)}
               title={card.title}
               value={summary[card.key]}
             />
@@ -139,14 +165,14 @@ export default function HomeScreen() {
         </View>
 
         <Pressable
-          onPress={openQuickEntry}
+          onPress={openProductConsultation}
           style={({ pressed }) => [
             styles.primaryButton,
             pressed && styles.primaryButtonPressed,
           ]}
         >
-          <Ionicons color="#ffffff" name="add" size={23} />
-          <Text style={styles.primaryButtonText}>Registrar entrada</Text>
+          <Ionicons color="#ffffff" name="scan-outline" size={23} />
+          <Text style={styles.primaryButtonText}>Escanear produto</Text>
         </Pressable>
 
         <Text style={styles.sectionTitle}>Atalhos rápidos</Text>
@@ -157,8 +183,18 @@ export default function HomeScreen() {
               key={shortcut.label}
               label={shortcut.label}
               onPress={
-                shortcut.label === 'Entrada Rápida'
-                  ? openQuickEntry
+                shortcut.label === 'Saída Rápida'
+                  ? openStockOutput
+                  : shortcut.label === 'Consultar Produto'
+                    ? openProductConsultation
+                  : shortcut.label === 'Cadastrar Produto'
+                    ? openQuickEntry
+                  : shortcut.label === 'Posição do Estoque'
+                    ? openStockPosition
+                  : shortcut.label === 'Histórico'
+                    ? openMovementHistory
+                  : shortcut.label === 'Entrada x Saída'
+                    ? openStockComparison
                   : shortcut.label === 'Produtos Vencendo'
                     ? openExpiringProducts
                     : shortcut.label === 'Estoque Baixo'
@@ -169,8 +205,6 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
-
-      <BottomTab />
     </SafeAreaView>
   );
 }

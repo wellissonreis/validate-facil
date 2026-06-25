@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import BottomTab from '@/features/home/components/BottomTab';
+import type { RootTabParamList } from '@/navigation/types';
 import {
   getExpiredProductItems,
   getExpiringInDaysProductItems,
@@ -31,6 +32,7 @@ const reportCards = [
 ] as const;
 
 export default function ReportsRoute() {
+  const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const [summary, setSummary] = useState(initialSummary);
 
   useFocusEffect(
@@ -84,13 +86,59 @@ export default function ReportsRoute() {
             </View>
           ))}
         </View>
+
+        <View style={styles.actions}>
+          <Pressable
+            onPress={() => navigation.navigate('ProductsTab', { screen: 'StockPosition' })}
+            style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+          >
+            <Ionicons color="#05b163" name="layers-outline" size={22} />
+            <Text style={styles.actionText}>Posição do estoque</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('ProductsTab', { screen: 'MovementHistory' })}
+            style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+          >
+            <Ionicons color="#05b163" name="time-outline" size={22} />
+            <Text style={styles.actionText}>Histórico</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('ProductsTab', { screen: 'StockComparison' })}
+            style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+          >
+            <Ionicons color="#05b163" name="git-compare-outline" size={22} />
+            <Text style={styles.actionText}>Entrada x Saída</Text>
+          </Pressable>
+        </View>
       </ScrollView>
-      <BottomTab activeTab="Relatórios" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  actionButton: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#cfeedd',
+    borderRadius: 16,
+    borderWidth: 1,
+    columnGap: 10,
+    flexDirection: 'row',
+    minHeight: 54,
+    paddingHorizontal: 16,
+  },
+  actionButtonPressed: {
+    backgroundColor: '#f5fbf8',
+  },
+  actionText: {
+    color: '#202124',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  actions: {
+    gap: 12,
+    marginTop: 20,
+  },
   card: {
     backgroundColor: '#ffffff',
     borderColor: '#f0f2f5',

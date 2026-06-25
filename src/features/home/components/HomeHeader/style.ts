@@ -19,20 +19,62 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
+    zIndex: 10,
   },
-  notification: {
+  headerSpacer: {
+    width: 40,
+  },
+  menu: {
+    backgroundColor: '#ffffff',
+    borderColor: '#eef2f4',
+    borderRadius: 8,
+    borderWidth: 1,
+    elevation: 8,
+    minWidth: 190,
+    paddingVertical: 6,
+    position: 'absolute',
+    left: 0,
+    shadowColor: '#000000',
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    top: 42,
+  },
+  menuArea: {
     position: 'relative',
   },
-  notificationDot: {
-    backgroundColor: '#e53935',
-    borderColor: '#ffffff',
-    borderRadius: 5,
-    borderWidth: 1.5,
-    height: 10,
-    position: 'absolute',
-    right: 1,
-    top: 1,
-    width: 10,
+  menuButton: {
+    alignItems: 'center',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  menuButtonPressed: {
+    backgroundColor: '#f1f3f4',
+  },
+  menuDivider: {
+    backgroundColor: '#eef2f4',
+    height: 1,
+    marginVertical: 4,
+  },
+  menuItem: {
+    alignItems: 'center',
+    columnGap: 10,
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  menuItemPressed: {
+    backgroundColor: '#f7f9fa',
+  },
+  menuItemText: {
+    color: '#202124',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  signOutText: {
+    color: '#d93025',
   },
 });
 

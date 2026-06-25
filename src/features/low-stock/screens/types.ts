@@ -2,6 +2,7 @@ export type LowStockStatus = 'Atenção' | 'Baixo' | 'Crítico';
 
 export type LowStockProduct = {
   id: string;
+  imageUri?: string;
   minimum: number;
   name: string;
   quantity: number;

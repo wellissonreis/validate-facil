@@ -2,6 +2,7 @@ import type { ExpiringProductStatus } from '../StatusBadge/types';
 
 export type ExpiringProduct = {
   id: string;
+  imageUri?: string;
   lotId?: string;
   name: string;
   productId?: string;

@@ -1,27 +1,38 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ExpiringProductRow, { type ExpiringProduct } from '@/features/expiring-products/components/ExpiringProductRow';
 import ProductTableHeader from '@/features/expiring-products/components/ProductTableHeader';
-import BottomTab from '@/features/home/components/BottomTab';
-import { formatProductDate, getProductDisplayDate, getProducts, isExpiredProduct } from '@/shared/storage/products';
+import type { ProductsStackParamList } from '@/navigation/types';
+import { formatProductDate, getProductDisplayDate, getProducts, getStockStatus } from '@/shared/storage/products';
 import type { Product } from '@/shared/storage/products';
 
 import styles from './style';
 
 function ProductsHeader() {
+  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
+
   return (
     <View style={styles.header}>
-      <Pressable accessibilityLabel="Voltar" onPress={() => router.back()} style={styles.iconButton}>
+      <Pressable
+        accessibilityLabel="Voltar"
+        onPress={() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          }
+        }}
+        style={styles.iconButton}
+      >
         <Ionicons color="#202124" name="chevron-back" size={26} />
       </Pressable>
       <Text style={styles.title}>Produtos</Text>
       <Pressable
         accessibilityLabel="Cadastrar produto"
-        onPress={() => router.push('/quick-entry')}
+        onPress={() => navigation.navigate('QuickEntry')}
         style={styles.iconButton}
       >
         <Ionicons color="#202124" name="add" size={26} />
@@ -31,16 +42,20 @@ function ProductsHeader() {
 }
 
 function toRowProduct(product: Product): ExpiringProduct {
+  const status = getStockStatus(product.quantidade, getProductDisplayDate(product));
+
   return {
     id: product.id,
+    imageUri: product.imageUri,
     name: product.nome,
     quantity: product.quantidade,
-    status: isExpiredProduct(product) ? 'Vencido' : 'Ok',
+    status: status === 'vencido' ? 'Vencido' : status === 'proximo' ? 'Atenção' : 'Ok',
     validUntil: formatProductDate(getProductDisplayDate(product)),
   };
 }
 
 export default function ProductsScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
 
@@ -101,7 +116,7 @@ export default function ProductsScreen() {
             </Text>
             {products.length === 0 ? (
               <Pressable
-                onPress={() => router.push('/quick-entry')}
+                onPress={() => navigation.navigate('QuickEntry')}
                 style={({ pressed }) => [styles.emptyButton, pressed && styles.emptyButtonPressed]}
               >
                 <Ionicons color="#ffffff" name="add" size={20} />
@@ -124,8 +139,6 @@ export default function ProductsScreen() {
         )}
         showsVerticalScrollIndicator={false}
       />
-
-      <BottomTab activeTab="Produtos" />
     </SafeAreaView>
   );
 }

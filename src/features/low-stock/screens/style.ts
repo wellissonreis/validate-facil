@@ -145,6 +145,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
+  thumbnail: {
+    backgroundColor: '#eef8f3',
+    borderRadius: 10,
+    height: 36,
+    width: 36,
+  },
   title: {
     color: '#202124',
     fontSize: 18,

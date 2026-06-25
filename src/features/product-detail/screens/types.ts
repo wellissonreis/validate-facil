@@ -1,4 +1,4 @@
-export type LotStatus = 'Atenção' | 'Crítico' | 'Ok';
+export type LotStatus = 'Atenção' | 'Crítico' | 'Não perecível' | 'Ok';
 
 export type ProductDetail = {
   barcode: string;

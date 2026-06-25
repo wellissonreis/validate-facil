@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { BarcodeScanningResult } from 'expo-camera';
-import { router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import BottomTab from '@/features/home/components/BottomTab';
+import type { ProductsStackParamList } from '@/navigation/types';
 import {
   addProduct,
   addStockEntry,
@@ -14,9 +15,10 @@ import {
   formatProductDate,
   getProductDisplayDate,
   getProductByBarcode,
+  NON_PERISHABLE_VALIDITY,
   parseProductDate,
 } from '@/shared/storage/products';
-import type { Product, StockEntry } from '@/shared/storage/products';
+import type { InitialStock, Product } from '@/shared/storage/products';
 
 import QuickEntryHeader from '../components/QuickEntryHeader';
 import QuickEntrySection from '../components/QuickEntrySection';
@@ -26,7 +28,7 @@ async function searchLocalProduct(barcode: string): Promise<Product | null> {
   return getProductByBarcode(barcode);
 }
 
-async function registerProductWithInitialStock(barcode: string, name: string, entry: StockEntry): Promise<void> {
+async function registerProductWithInitialStock(barcode: string, name: string, entry: InitialStock): Promise<void> {
   await addProduct({
     codigoBarras: barcode,
     nome: name,
@@ -34,11 +36,12 @@ async function registerProductWithInitialStock(barcode: string, name: string, en
   });
 }
 
-async function addEntryToExistingProduct(productId: string, entry: StockEntry): Promise<void> {
+async function registerStockEntry(productId: string, entry: InitialStock): Promise<void> {
   await addStockEntry(productId, entry);
 }
 
 export default function QuickEntryScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [barcode, setBarcode] = useState('');
   const [foundProduct, setFoundProduct] = useState<Product | null>(null);
@@ -48,7 +51,56 @@ export default function QuickEntryScreen() {
   const [expirationDate, setExpirationDate] = useState('');
   const [lot, setLot] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isExpirationModalOpen, setIsExpirationModalOpen] = useState(false);
   const scanLockedRef = useRef(false);
+  const cameraGranted = cameraPermission?.granted ?? false;
+  const cameraPermissionLoaded = cameraPermission !== null;
+  const cameraCanAskAgain = cameraPermission?.canAskAgain ?? true;
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      async function openScannerOnFocus() {
+        if (cameraGranted) {
+          scanLockedRef.current = false;
+          setIsScannerOpen(true);
+          return;
+        }
+
+        if (!cameraPermissionLoaded) {
+          const permission = await requestCameraPermission();
+
+          if (isActive && permission.granted) {
+            scanLockedRef.current = false;
+            setIsScannerOpen(true);
+          }
+
+          return;
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        Alert.alert(
+          'Câmera não autorizada',
+          cameraCanAskAgain
+            ? 'A permissão da câmera é necessária para escanear o código de barras.'
+            : 'Ative a permissão da câmera nas configurações do aparelho para usar o scanner.',
+        );
+      }
+
+      openScannerOnFocus();
+
+      return () => {
+        isActive = false;
+        scanLockedRef.current = false;
+        setIsScannerOpen(false);
+        setIsExpirationModalOpen(false);
+      };
+    }, [cameraCanAskAgain, cameraGranted, cameraPermissionLoaded, requestCameraPermission]),
+  );
 
   function handleChangeBarcode(value: string) {
     setBarcode(value);
@@ -114,6 +166,8 @@ export default function QuickEntryScreen() {
     setBarcode(scannedBarcode);
     setFoundProduct(null);
     setHasSearched(false);
+    setExpirationDate('');
+    setIsExpirationModalOpen(true);
 
     await findProduct(scannedBarcode);
   }
@@ -122,7 +176,9 @@ export default function QuickEntryScreen() {
     const trimmedBarcode = barcode.trim();
     const trimmedName = name.trim();
     const parsedQuantity = Number(quantity.replace(',', '.'));
-    const parsedExpirationDate = parseProductDate(expirationDate);
+    const parsedExpirationDate = expirationDate.trim()
+      ? parseProductDate(expirationDate)
+      : NON_PERISHABLE_VALIDITY;
 
     if (!trimmedBarcode) {
       Alert.alert('Código obrigatório', 'Informe ou escaneie o código de barras.');
@@ -150,22 +206,22 @@ export default function QuickEntryScreen() {
     }
 
     try {
-      const stockEntry: StockEntry = {
+      const initialStock: InitialStock = {
         quantidade: parsedQuantity,
         validade: parsedExpirationDate,
         lote: lot.trim() || undefined,
       };
 
       if (foundProduct) {
-        await addEntryToExistingProduct(foundProduct.id, stockEntry);
+        await registerStockEntry(foundProduct.id, initialStock);
       } else {
-        await registerProductWithInitialStock(trimmedBarcode, trimmedName, stockEntry);
+        await registerProductWithInitialStock(trimmedBarcode, trimmedName, initialStock);
       }
 
-      Alert.alert('Entrada salva', foundProduct ? 'Estoque atualizado com sucesso.' : 'Produto cadastrado com sucesso.');
-      router.replace('/products');
+      Alert.alert(foundProduct ? 'Entrada registrada' : 'Produto cadastrado', 'Estoque atualizado com sucesso.');
+      navigation.popTo('Products');
     } catch {
-      Alert.alert('Erro ao salvar', 'Não foi possível salvar a entrada agora.');
+      Alert.alert('Erro ao salvar', 'Não foi possível cadastrar o produto agora.');
     }
   }
 
@@ -187,21 +243,23 @@ export default function QuickEntryScreen() {
             />
           </View>
 
-          <Pressable
-            onPress={handleSearch}
-            style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
-          >
-            <Ionicons color="#05b163" name="barcode-outline" size={21} />
-            <Text style={styles.searchButtonText}>Buscar código</Text>
-          </Pressable>
+          <View style={styles.barcodeActions}>
+            <Pressable
+              onPress={handleToggleScanner}
+              style={({ pressed }) => [styles.scanButton, pressed && styles.scanButtonPressed]}
+            >
+              <Ionicons color="#ffffff" name={isScannerOpen ? 'close-outline' : 'scan-outline'} size={22} />
+              <Text style={styles.scanButtonText}>{isScannerOpen ? 'Fechar scanner' : 'Escanear código'}</Text>
+            </Pressable>
 
-          <Pressable
-            onPress={handleToggleScanner}
-            style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
-          >
-            <Ionicons color="#05b163" name={isScannerOpen ? 'close-outline' : 'camera-outline'} size={21} />
-            <Text style={styles.searchButtonText}>{isScannerOpen ? 'Fechar scanner' : 'Abrir scanner'}</Text>
-          </Pressable>
+            <Pressable
+              onPress={handleSearch}
+              style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
+            >
+              <Ionicons color="#05b163" name="keypad-outline" size={21} />
+              <Text style={styles.searchButtonText}>Usar código digitado</Text>
+            </Pressable>
+          </View>
 
           {isScannerOpen ? (
             <View style={styles.scannerContainer}>
@@ -212,13 +270,14 @@ export default function QuickEntryScreen() {
         </QuickEntrySection>
 
         {foundProduct ? (
-          <QuickEntrySection title="2. Produto encontrado">
+          <QuickEntrySection title="2. Produto já cadastrado">
             <View style={styles.foundCard}>
               <View style={styles.foundIcon}>
                 <Ionicons color="#05b163" name="checkmark" size={22} />
               </View>
               <View style={styles.foundInfo}>
                 <Text style={styles.foundName}>{foundProduct.nome}</Text>
+                <Text style={styles.foundText}>Este código já está em uso. Registre uma nova entrada abaixo.</Text>
                 <Text style={styles.foundText}>Estoque atual: {foundProduct.quantidade} un</Text>
                 <Text style={styles.foundText}>Validade: {formatProductDate(getProductDisplayDate(foundProduct))}</Text>
               </View>
@@ -244,8 +303,9 @@ export default function QuickEntryScreen() {
           </QuickEntrySection>
         ) : null}
 
-        <QuickEntrySection title={foundProduct ? '3. Estoque e validade' : '3. Estoque inicial'}>
+        <QuickEntrySection title={foundProduct ? '3. Nova entrada' : '3. Estoque inicial'}>
           {!hasSearched ? <Text style={styles.helpText}>Busque o código de barras para continuar.</Text> : null}
+          {foundProduct ? <Text style={styles.helpText}>A entrada será adicionada ao produto encontrado.</Text> : null}
 
           <View style={styles.row}>
             <View style={styles.field}>
@@ -262,13 +322,13 @@ export default function QuickEntryScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Validade</Text>
+              <Text style={styles.label}>Validade (opcional)</Text>
               <TextInput
                 editable={hasSearched}
                 keyboardType="numbers-and-punctuation"
                 maxLength={10}
                 onChangeText={(value) => setExpirationDate(formatDateInput(value))}
-                placeholder="DD/MM/AAAA"
+                placeholder="Vazio = não perecível"
                 placeholderTextColor="#9aa0a6"
                 style={styles.input}
                 value={expirationDate}
@@ -298,7 +358,50 @@ export default function QuickEntryScreen() {
         </Pressable>
       </ScrollView>
 
-      <BottomTab activeTab="Entrada" />
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setIsExpirationModalOpen(false)}
+        transparent
+        visible={isExpirationModalOpen}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIcon}>
+              <Ionicons color="#05b163" name="calendar-outline" size={28} />
+            </View>
+            <Text style={styles.modalTitle}>Qual é a validade?</Text>
+            <Text style={styles.modalText}>
+              Informe a data agora ou continue sem preencher para identificar o produto como não perecível.
+            </Text>
+            <View style={styles.modalField}>
+              <Text style={styles.label}>Validade (opcional)</Text>
+              <TextInput
+                autoFocus
+                keyboardType="numbers-and-punctuation"
+                maxLength={10}
+                onChangeText={(value) => setExpirationDate(formatDateInput(value))}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#9aa0a6"
+                style={styles.input}
+                value={expirationDate}
+              />
+            </View>
+            <Pressable
+              onPress={() => {
+                if (expirationDate.trim() && !parseProductDate(expirationDate)) {
+                  Alert.alert('Validade inválida', 'Informe a validade no formato DD/MM/AAAA.');
+                  return;
+                }
+
+                setIsExpirationModalOpen(false);
+              }}
+              style={({ pressed }) => [styles.modalPrimaryButton, pressed && styles.saveButtonPressed]}
+            >
+              <Text style={styles.saveButtonText}>{expirationDate ? 'Confirmar validade' : 'Continuar sem validade'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
