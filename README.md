@@ -1,56 +1,116 @@
-# Welcome to your Expo app 👋
+# Validade Facil
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicacao multiplataforma para controle de validade, lotes e movimentacoes de estoque. O Validade Facil concentra rotinas operacionais de cadastro, consulta e acompanhamento de produtos em uma interface preparada para uso recorrente em dispositivos moveis.
 
-## Get started
+Este repositorio contem o cliente do produto. A API responsavel por autenticacao, persistencia e regras transacionais esta no repositorio [`validade-facil-api`](https://github.com/wellissonreis/validade-facil-api).
 
-1. Install dependencies
+## Visao do produto
 
-   ```bash
-   npm install
-   ```
+O aplicativo foi estruturado para reduzir perdas por vencimento e melhorar a rastreabilidade do estoque. Os principais fluxos incluem:
 
-2. Start the app
+- painel com indicadores de produtos vencidos, proximos do vencimento e com estoque baixo;
+- cadastro e consulta de produtos por codigo de barras;
+- controle de entradas, saidas, lotes e datas de validade;
+- baixa de itens vencidos e historico de movimentacoes;
+- comparacao entre saldo atual, entradas e saidas registradas;
+- relatorios operacionais para acompanhamento do inventario;
+- autenticacao e integracao com uma instalacao propria da API.
 
-   ```bash
-   npx expo start
-   ```
+## Arquitetura do cliente
 
-In the output, you'll find options to open the app in a
+O codigo e organizado por funcionalidades, com separacao entre apresentacao, navegacao, configuracao e acesso a dados.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+src/
+|-- app/                 # composicao das rotas da aplicacao
+|-- features/            # modulos funcionais e suas telas
+|-- navigation/          # contratos e fluxos de navegacao
+|-- shared/api/          # cliente HTTP, autenticacao e sessao
+|-- shared/config/       # configuracao de ambiente
+|-- shared/storage/      # contratos e implementacoes de persistencia
+`-- assets/              # identidade visual e recursos estaticos
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+A camada de armazenamento expoe uma interface unica para as telas e permite dois modos de operacao:
 
-### Other setup steps
+- `storage`: dados mantidos localmente com AsyncStorage;
+- `onpremise`: dados persistidos pela API REST, com sessao autenticada.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Essa separacao reduz o acoplamento da interface com a infraestrutura e permite evoluir os modos de implantacao sem duplicar os fluxos do produto.
 
-## Learn more
+## Stack
 
-To learn more about developing your project with Expo, look at the following resources:
+- React Native 0.85 e React 19;
+- Expo SDK 56;
+- TypeScript;
+- React Navigation;
+- AsyncStorage para persistencia local;
+- Expo Camera para leitura de codigo de barras;
+- cliente HTTP integrado a API do Validade Facil.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Configuracao
 
-## Join the community
+### Pre-requisitos
 
-Join our community of developers creating universal apps.
+- Node.js compativel com o Expo SDK 56;
+- npm;
+- Android Studio, Xcode ou um dispositivo com ambiente Expo, conforme a plataforma de destino.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Instale as dependencias e crie o arquivo de ambiente:
+
+```sh
+npm install
+cp .env.example .env
+```
+
+Para executar somente com armazenamento local:
+
+```env
+EXPO_PUBLIC_APP_DATA_MODE=storage
+```
+
+Para conectar a uma instalacao da API:
+
+```env
+EXPO_PUBLIC_APP_DATA_MODE=onpremise
+EXPO_PUBLIC_API_URL=http://localhost:8080
+```
+
+No emulador Android, use `http://10.0.2.2:8080` para acessar uma API executada na maquina host.
+
+## Execucao
+
+```sh
+npm run start
+```
+
+Outros comandos disponiveis:
+
+```sh
+npm run android
+npm run ios
+npm run web
+npm run typecheck
+npm run lint
+```
+
+## Integracao com a API
+
+No modo `onpremise`, o aplicativo autentica o usuario, mantem a sessao e delega a API as operacoes de catalogo, lotes e estoque. A URL deve apontar para uma instancia acessivel pelo dispositivo; `localhost` no dispositivo nao representa necessariamente a maquina de desenvolvimento.
+
+O contrato HTTP e as instrucoes completas de infraestrutura estao documentados no repositorio do back-end.
+
+## Qualidade e evolucao
+
+Antes de publicar alteracoes, execute:
+
+```sh
+npm run typecheck
+npm run lint
+```
+
+Novos modulos devem preservar a separacao entre componentes visuais, regras de fluxo e acesso a dados. Informacoes sensiveis e configuracoes especificas de ambiente devem permanecer no `.env`, que nao e versionado.
+
+## Licenca
+
+Consulte o arquivo [LICENSE](LICENSE) para os termos de uso e distribuicao.
