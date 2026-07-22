@@ -8,11 +8,11 @@
     "scheme": "validatefacil",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./src/assets/icons/expo.icon"
+      "icon": "./src/assets/icons/icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#F7FFFB",
         "foregroundImage": "./src/assets/icons/android-icon-foreground.png",
         "backgroundImage": "./src/assets/icons/android-icon-background.png",
         "monochromeImage": "./src/assets/icons/android-icon-monochrome.png"
@@ -28,11 +28,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./src/assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "backgroundColor": "#F7FFFB",
+          "image": "./src/assets/images/splash-icon.png",
+          "imageWidth": 260,
+          "resizeMode": "contain"
         }
       ],
       [
