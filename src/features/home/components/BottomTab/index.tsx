@@ -90,17 +90,30 @@ function TabButton({
   const color = selected ? primaryGreen : inactiveGray;
 
   function navigate() {
-    if (selected || !route) {
+    if (!route) {
       return;
     }
 
-    navigation.emit({
+    const event = navigation.emit({
       canPreventDefault: true,
       target: route.key,
       type: 'tabPress',
     });
 
-    navigation.navigate(route.name);
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (tab.routeName === 'ProductsTab') {
+      navigation.navigate('ProductsTab', { screen: 'Products' });
+      return;
+    }
+
+    if (selected) {
+      return;
+    }
+
+    navigation.navigate(tab.routeName);
   }
 
   return (

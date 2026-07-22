@@ -19,10 +19,12 @@ export type HomeStackParamList = {
   Home: undefined;
 };
 
+export type ProductFlowReturnTarget = 'Consultation' | 'Home' | 'Products';
+
 export type ProductsStackParamList = {
   Products: undefined;
   ProductDetail: { id: string };
-  QuickEntry: undefined;
+  QuickEntry: { returnTo?: ProductFlowReturnTarget } | undefined;
   ExpiringProducts: { filter?: ExpirationFilter } | undefined;
   LowStock: undefined;
   MovementHistory: undefined;

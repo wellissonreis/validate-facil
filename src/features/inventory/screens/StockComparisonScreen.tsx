@@ -98,6 +98,7 @@ export default function StockComparisonScreen() {
 
       return () => {
         isActive = false;
+        setProducts([]);
       };
     }, [parsedEndDate, parsedStartDate, selectedLotId, selectedProductId]),
   );

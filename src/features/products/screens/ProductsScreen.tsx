@@ -32,7 +32,7 @@ function ProductsHeader() {
       <Text style={styles.title}>Produtos</Text>
       <Pressable
         accessibilityLabel="Cadastrar produto"
-        onPress={() => navigation.navigate('QuickEntry')}
+        onPress={() => navigation.navigate('QuickEntry', { returnTo: 'Products' })}
         style={styles.iconButton}
       >
         <Ionicons color="#202124" name="add" size={26} />
@@ -75,6 +75,7 @@ export default function ProductsScreen() {
 
       return () => {
         isActive = false;
+        setProducts([]);
       };
     }, []),
   );
@@ -116,7 +117,7 @@ export default function ProductsScreen() {
             </Text>
             {products.length === 0 ? (
               <Pressable
-                onPress={() => navigation.navigate('QuickEntry')}
+                onPress={() => navigation.navigate('QuickEntry', { returnTo: 'Products' })}
                 style={({ pressed }) => [styles.emptyButton, pressed && styles.emptyButtonPressed]}
               >
                 <Ionicons color="#ffffff" name="add" size={20} />

@@ -6,12 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootTabParamList } from '@/navigation/types';
-import {
-  getExpiredProductItems,
-  getExpiringInDaysProductItems,
-  getProducts,
-  isLowStockProduct,
-} from '@/shared/storage/products';
+import { getProductSummary } from '@/shared/storage/products';
 
 const initialSummary = {
   expiringIn15Days: 0,
@@ -40,16 +35,16 @@ export default function ReportsRoute() {
       let isActive = true;
 
       async function loadSummary() {
-        const products = await getProducts();
+        const productSummary = await getProductSummary();
 
         if (isActive) {
           setSummary({
-            expiringIn15Days: getExpiringInDaysProductItems(products, 15).length,
-            expiringIn7Days: getExpiringInDaysProductItems(products, 7).length,
-            expired: getExpiredProductItems(products).length,
-            lowStock: products.filter(isLowStockProduct).length,
-            totalProducts: products.length,
-            totalUnits: products.reduce((total, product) => total + product.quantidade, 0),
+            expiringIn15Days: productSummary.expiringIn15Days,
+            expiringIn7Days: productSummary.expiringIn7Days,
+            expired: productSummary.expired,
+            lowStock: productSummary.lowStock,
+            totalProducts: productSummary.totalProducts,
+            totalUnits: productSummary.totalUnits,
           });
         }
       }

@@ -40,6 +40,9 @@ const styles = StyleSheet.create({
   signInButtonPressed: {
     backgroundColor: '#19c978',
   },
+  disabledButton: {
+    opacity: 0.7,
+  },
   continueDivider: {
     alignItems: 'center',
     columnGap: Spacing.two,

@@ -115,6 +115,7 @@ export default function ExpiringProductsScreen() {
 
       return () => {
         isActive = false;
+        setProducts([]);
       };
     }, [filter]),
   );

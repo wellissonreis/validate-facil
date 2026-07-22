@@ -14,6 +14,7 @@ import {
   getProductByBarcode,
   getProductDisplayDate,
   getProductLots,
+  getProductSummary,
   getProducts,
   isNonPerishableValidity,
 } from '@/shared/storage/products';
@@ -45,7 +46,7 @@ function ProductConsultationHeader() {
       <Text style={styles.headerTitle}>Consultar Produto</Text>
       <Pressable
         accessibilityLabel="Cadastrar produto"
-        onPress={() => navigation.navigate('ProductsTab', { screen: 'QuickEntry' })}
+        onPress={() => navigation.navigate('ProductsTab', { params: { returnTo: 'Consultation' }, screen: 'QuickEntry' })}
         style={styles.headerButton}
       >
         <Ionicons color="#202124" name="add" size={26} />
@@ -264,10 +265,10 @@ export default function ProductConsultationScreen() {
       let isActive = true;
 
       async function loadTotalProducts() {
-        const storedProducts = await getProducts();
+        const summary = await getProductSummary();
 
         if (isActive) {
-          setTotalProducts(storedProducts.length);
+          setTotalProducts(summary.totalProducts);
         }
       }
 
@@ -275,6 +276,9 @@ export default function ProductConsultationScreen() {
 
       return () => {
         isActive = false;
+        setProduct(null);
+        setMatches([]);
+        setHasSearched(false);
       };
     }, []),
   );
@@ -470,7 +474,9 @@ export default function ProductConsultationScreen() {
                 <Text style={styles.emptyTitle}>Produto não encontrado</Text>
                 <Text style={styles.emptyText}>Cadastre o produto para acompanhar estoque, validade e lotes.</Text>
                 <Pressable
-                  onPress={() => navigation.navigate('ProductsTab', { screen: 'QuickEntry' })}
+                  onPress={() =>
+                    navigation.navigate('ProductsTab', { params: { returnTo: 'Consultation' }, screen: 'QuickEntry' })
+                  }
                   style={({ pressed }) => [styles.emptyButton, pressed && styles.emptyButtonPressed]}
                 >
                   <Ionicons color="#ffffff" name="add" size={20} />

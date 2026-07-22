@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import type { RootStackParamList } from '@/navigation/types';
+import { login } from '@/shared/api/auth';
+import { isOnPremiseMode } from '@/shared/config/appMode';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import type { RootStackParamList } from '@/navigation/types';
 import FloatingInput from '../floating-input/FloatingInput';
 import styles from './style';
 
@@ -34,6 +36,35 @@ export default function Section() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function goToMainTabs() {
+    navigation.replace('MainTabs', { screen: 'HomeTab', params: { screen: 'Home' } });
+  }
+
+  async function handleSubmit() {
+    if (!isOnPremiseMode) {
+      goToMainTabs();
+      return;
+    }
+
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername || password.length < 8) {
+      Alert.alert('Dados inválidos', 'Informe usuário e senha com pelo menos 8 caracteres.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await login({ password, username: trimmedUsername });
+      goToMainTabs();
+    } catch {
+      Alert.alert('Erro ao entrar', 'Usuário ou senha inválidos.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -60,13 +91,15 @@ export default function Section() {
       </Pressable>
 
       <Pressable
-        onPress={() => navigation.replace('MainTabs', { screen: 'HomeTab', params: { screen: 'Home' } })}
+        disabled={isSubmitting}
+        onPress={handleSubmit}
         style={({ pressed }) => [
           styles.signInButton,
           pressed && styles.signInButtonPressed,
+          isSubmitting && styles.disabledButton,
         ]}
       >
-        <Text style={styles.signInButtonText}>Entrar</Text>
+        {isSubmitting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.signInButtonText}>Entrar</Text>}
       </Pressable>
 
       <View style={styles.continueDivider}>

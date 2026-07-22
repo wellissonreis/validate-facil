@@ -100,6 +100,7 @@ export default function LowStockScreen() {
 
       return () => {
         isActive = false;
+        setProducts([]);
       };
     }, []),
   );

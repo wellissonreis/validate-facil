@@ -1,20 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, Text, View } from 'react-native';
-
-import type { ProductsStackParamList } from '@/navigation/types';
 
 import styles from './style';
 
-export default function QuickEntryHeader() {
-  const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
+type QuickEntryHeaderProps = {
+  onBack: () => void;
+};
 
+export default function QuickEntryHeader({ onBack }: QuickEntryHeaderProps) {
   return (
     <View style={styles.container}>
       <Pressable
         accessibilityLabel="Voltar"
-        onPress={() => navigation.goBack()}
+        onPress={onBack}
         style={styles.iconButton}
       >
         <Ionicons color="#202124" name="chevron-back" size={26} />

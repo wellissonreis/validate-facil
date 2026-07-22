@@ -6,12 +6,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootTabParamList } from '@/navigation/types';
-import {
-  getExpiredProductItems,
-  getExpiringInDaysProductItems,
-  getProducts,
-  isLowStockProduct,
-} from '@/shared/storage/products';
+import { getProductSummary } from '@/shared/storage/products';
 
 import HomeHeader from '../components/HomeHeader';
 import QuickShortcutCard from '../components/QuickShortcutCard';
@@ -84,15 +79,15 @@ export default function HomeScreen() {
       let isActive = true;
 
       async function loadSummary() {
-        const products = await getProducts();
+        const productSummary = await getProductSummary();
 
         if (isActive) {
           setSummary({
-            expiringIn15Days: getExpiringInDaysProductItems(products, 15).length,
-            expiringIn7Days: getExpiringInDaysProductItems(products, 7).length,
-            expired: getExpiredProductItems(products).length,
-            lowStock: products.filter(isLowStockProduct).length,
-            total: products.length,
+            expiringIn15Days: productSummary.expiringIn15Days,
+            expiringIn7Days: productSummary.expiringIn7Days,
+            expired: productSummary.expired,
+            lowStock: productSummary.lowStock,
+            total: productSummary.totalProducts,
           });
         }
       }
@@ -106,7 +101,7 @@ export default function HomeScreen() {
   );
 
   function openQuickEntry() {
-    navigation.navigate('ProductsTab', { screen: 'QuickEntry' });
+    navigation.navigate('ProductsTab', { params: { returnTo: 'Home' }, screen: 'QuickEntry' });
   }
 
   function openStockOutput() {

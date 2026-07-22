@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { BarcodeScanningResult } from 'expo-camera';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { returnFromProductFlow } from '@/navigation/productReturn';
 import type { ProductsStackParamList } from '@/navigation/types';
 import {
   addProduct,
@@ -42,6 +44,7 @@ async function registerStockEntry(productId: string, entry: InitialStock): Promi
 
 export default function QuickEntryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ProductsStackParamList>>();
+  const route = useRoute<RouteProp<ProductsStackParamList, 'QuickEntry'>>();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [barcode, setBarcode] = useState('');
   const [foundProduct, setFoundProduct] = useState<Product | null>(null);
@@ -53,6 +56,8 @@ export default function QuickEntryScreen() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isExpirationModalOpen, setIsExpirationModalOpen] = useState(false);
   const scanLockedRef = useRef(false);
+  const isReturningRef = useRef(false);
+  const returnTo = route.params?.returnTo ?? 'Products';
   const cameraGranted = cameraPermission?.granted ?? false;
   const cameraPermissionLoaded = cameraPermission !== null;
   const cameraCanAskAgain = cameraPermission?.canAskAgain ?? true;
@@ -101,6 +106,26 @@ export default function QuickEntryScreen() {
       };
     }, [cameraCanAskAgain, cameraGranted, cameraPermissionLoaded, requestCameraPermission]),
   );
+
+  const handleReturn = useCallback(() => {
+    isReturningRef.current = true;
+    returnFromProductFlow(navigation, returnTo);
+  }, [navigation, returnTo]);
+
+  useEffect(() => {
+    if (returnTo === 'Products') {
+      return undefined;
+    }
+
+    return navigation.addListener('beforeRemove', (event) => {
+      if (isReturningRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+      handleReturn();
+    });
+  }, [handleReturn, navigation, returnTo]);
 
   function handleChangeBarcode(value: string) {
     setBarcode(value);
@@ -219,7 +244,7 @@ export default function QuickEntryScreen() {
       }
 
       Alert.alert(foundProduct ? 'Entrada registrada' : 'Produto cadastrado', 'Estoque atualizado com sucesso.');
-      navigation.popTo('Products');
+      handleReturn();
     } catch {
       Alert.alert('Erro ao salvar', 'Não foi possível cadastrar o produto agora.');
     }
@@ -227,7 +252,7 @@ export default function QuickEntryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <QuickEntryHeader />
+      <QuickEntryHeader onBack={handleReturn} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <QuickEntrySection title="1. Código de barras">
